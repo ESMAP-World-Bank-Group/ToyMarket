@@ -1,0 +1,14 @@
+﻿paramNames,file
+A,A.csv
+B,B.csv
+pAvailability,pAvailability.csv
+pDuration,pDuration.csv
+pFirmData,pFirmData.csv
+pFuelPrice,pFuelPrice.csv
+pGenData,pGenData.csv
+pDemandProfile,pDemandProfile.csv
+pDemandForecast,pDemandForecast.csv
+pMinGen,pMinGen.csv
+pScalars,pScalars.csv
+pVREgenProfile,pVREgenProfile.csv
+y,y.csv

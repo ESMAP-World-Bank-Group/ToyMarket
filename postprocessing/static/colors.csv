@@ -1,0 +1,41 @@
+Processing,Color
+Coal,darkgray
+Oil,rosybrown
+Oil diesel,brown
+Gas,tan
+Battery Storage,slateblue
+Battery,slateblue
+Battery Storage 4h,slateblue
+Battery Storage 8h,slateblue
+Pumped-Hydro,cornflowerblue
+H2,lightcyan
+Biomass,darkseagreen
+Hydro,lightskyblue
+Wind,lightsteelblue
+Solar,orange
+Concentrated Solar,orange
+Trade,thistle
+Import,thistle
+Hydro MC,lightskyblue
+Hydro RoR,lightskyblue
+Hydro Storage,lightskyblue
+Unmet demand,black
+Demand,red
+Exports,green
+Storage Charge,pink
+Onshore Wind,green
+Offshore Wind,blue
+Uranium,forestgreen
+Geothermal,brown
+CSP,yellow
+AnnCapex,steelblue
+FOM,darkseagreen
+VOM,gold
+Fuel,peru
+Transmissions,skyblue
+Unmet demand,salmon
+Excess gen,silver
+VRE curtail,mediumaquamarine
+Import,pink
+Export,slateblue
+Spinning reserve,dimgrey'

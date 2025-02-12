@@ -1,0 +1,6 @@
+﻿Parameters,Value
+DR,0.1
+WACC,0.1
+PriceCap,10000
+scenario,1
+elasticity,-0.1

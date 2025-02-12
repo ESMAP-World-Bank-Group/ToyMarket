@@ -1,0 +1,635 @@
+from matplotlib import pyplot as plt
+import numpy as np
+import pandas as pd
+
+
+NAME_COLUMNS = {
+    'pGenSupply': 'generator',
+    'pEnergyByTechDispatch': 'tech',
+    'pEnergyByFuelDispatch': 'fuel',
+    'pDemand': 'demand',
+    'pDispatch': 'attribute',
+    'pCostSummary': 'attribute',
+    'pCapacityByFuel': 'fuel',
+    'pEnergyByFuel': 'fuel'
+}
+
+COLORS = 'static/colors.csv'
+FUELS = 'static/fuels.csv'
+TECHS = 'static/technologies.csv'
+
+def read_plot_specs():
+    """
+    Read the specifications for the plots from the static files.
+
+    Returns:
+    -------
+    dict_specs: dict
+        Dictionary containing the specifications for the plots
+    """
+
+    colors = pd.read_csv(COLORS)
+    fuel_mapping = pd.read_csv(FUELS)
+    tech_mapping = pd.read_csv(TECHS)
+
+    dict_specs = {
+        'colors': colors.set_index('Processing')['Color'].to_dict(),
+        'fuel_mapping': fuel_mapping.set_index('EPM_Fuel')['Processing'].to_dict(),
+        'tech_mapping': tech_mapping.set_index('EPM_Tech')['Processing'].to_dict()
+    }
+    return dict_specs
+
+
+def standardize_names(dict_df, key, mapping, column='fuel'):
+    """
+    Standardize the names of fuels in the dataframes.
+
+    Only works when dataframes have fuel and value (with numerical values) columns.
+
+    Parameters
+    ----------
+    dict_df: dict
+        Dictionary containing the dataframes
+    key: str
+        Key of the dictionary to modify
+    mapping: dict
+        Dictionary mapping the original fuel names to the standardized names
+    column: str, optional, default='fuel'
+        Name of the column containing the fuels
+    """
+
+    if key in dict_df.keys():
+        temp = dict_df[key].copy()
+        temp[column] = temp[column].replace(mapping)
+        temp = temp.groupby([i for i in temp.columns if i != 'value'], observed=False).sum().reset_index()
+
+        new_fuels = [f for f in temp[column].unique() if f not in mapping.values()]
+        if new_fuels:
+            raise ValueError(f'New fuels found in {key}: {new_fuels}. '
+                             f'Add fuels to the mapping in the /static folder and add in the colors.csv file.')
+
+        dict_df[key] = temp.copy()
+    else:
+        print(f'{key} not found in epm_dict')
+
+
+def process_for_labels(epm_dict, dict_specs):
+    if dict_specs is not None:
+        standardize_names(epm_dict, 'pEnergyByFuel', dict_specs['fuel_mapping'], column='fuel')
+        standardize_names(epm_dict, 'pEnergyByTech', dict_specs['tech_mapping'], column='tech')
+    return epm_dict
+
+
+def make_stacked_bar_subplots(df, filename, dict_colors, selected_zone=None, selected_year=None, column_xaxis='year',
+                              column_stacked='fuel', column_multiple_bars='scenario',
+                              column_value='value', select_xaxis=None, dict_grouping=None, order_scenarios=None,
+                              dict_scenarios=None,
+                              format_y=lambda y, _: '{:.0f} MW'.format(y),  annotation_format="{:.0f}",
+                              order_stacked=None, cap=2, annotate=True,
+                              show_total=False, fonttick=12, rotation=0, title=None):
+    """
+    Subplots with stacked bars. Can be used to explore the evolution of capacity over time and across scenarios.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Dataframe with results.
+    filename : str
+        Path to save the figure.
+    dict_colors : dict
+        Dictionary with color arguments.
+    selected_zone : str
+        Zone to select.
+    column_xaxis : str
+        Column for choosing the subplots.
+    column_stacked : str
+        Column name for choosing the column to stack values.
+    column_multiple_bars : str
+        Column for choosing the type of bars inside a given subplot.
+    column_value : str
+        Column name for the values to be plotted.
+    select_xaxis : list, optional
+        Select a subset of subplots (e.g., a number of years).
+    dict_grouping : dict, optional
+        Dictionary for grouping variables and summing over a given group.
+    order_scenarios : list, optional
+        Order of scenarios for plotting.
+    dict_scenarios : dict, optional
+        Dictionary for renaming scenarios.
+    format_y : function, optional
+        Function for formatting y-axis labels.
+    order_stacked : list, optional
+        Reordering the variables that will be stacked.
+    cap : int, optional
+        Under this cap, no annotation will be displayed.
+    annotate : bool, optional
+        Whether to annotate the bars.
+    show_total : bool, optional
+        Whether to show the total value on top of each bar.
+
+    Example
+    -------
+    Stacked bar subplots for capacity (by fuel) evolution:
+    filename = Path(RESULTS_FOLDER) / Path('images') / Path('CapacityEvolution.png')
+    fuel_grouping = {
+        'Battery Storage 4h': 'Battery',
+        'Battery Storage 8h': 'Battery',
+        'Hydro RoR': 'Hydro',
+        'Hydro Storage': 'Hydro'
+    }
+    scenario_names = {
+        'baseline': 'Baseline',
+        'HydroHigh': 'High Hydro',
+        'DemandHigh': 'High Demand',
+        'LowImport_LowThermal': 'LowImport_LowThermal'
+    }
+    make_stacked_bar_subplots(epm_dict['pCapacityByFuel'], filename, dict_specs['colors'], selected_zone='Liberia',
+                              select_xaxis=[2025, 2028, 2030], dict_grouping=fuel_grouping, dict_scenarios=scenario_names,
+                              order_scenarios=['Baseline', 'High Hydro', 'High Demand', 'LowImport_LowThermal'],
+                              format_y=lambda y, _: '{:.0f} MW'.format(y))
+
+    Stacked bar subplots for reserve evolution:
+    filename = Path(RESULTS_FOLDER) / Path('images') / Path('ReserveEvolution.png')
+    make_stacked_bar_subplots(epm_dict['pReserveByPlant'], filename, dict_colors=dict_specs['colors'], selected_zone='Liberia',
+                              column_xaxis='year', column_stacked='fuel', column_multiple_bars='scenario',
+                              select_xaxis=[2025, 2028, 2030], dict_grouping=dict_grouping, dict_scenarios=scenario_names,
+                              order_scenarios=['Baseline', 'High Hydro', 'High Demand', 'LowImport_LowThermal'],
+                              format_y=lambda y, _: '{:.0f} GWh'.format(y),
+                              order_stacked=['Hydro', 'Oil'], cap=2)
+    """
+    if selected_zone is not None:
+        df = df[(df['zone'] == selected_zone)]
+        df = df.drop(columns=['zone'])
+
+    if selected_year is not None:
+        df = df[(df['year'] == selected_year)]
+        df = df.drop(columns=['year'])
+
+    if dict_grouping is not None:
+        for key, grouping in dict_grouping.items():
+            assert key in df.columns, f'Grouping parameter with key {key} is used but {key} is not in the columns.'
+            df[key] = df[key].replace(grouping)  # case-specific, according to level of preciseness for dispatch plot
+
+    if column_xaxis is not None:
+        df = (df.groupby([column_xaxis, column_stacked, column_multiple_bars], observed=False)[
+                  column_value].sum().reset_index())
+        df = df.set_index([column_stacked, column_multiple_bars, column_xaxis]).squeeze().unstack(column_xaxis)
+    else:  # no subplots in this case
+        df = (df.groupby([column_stacked, column_multiple_bars], observed=False)[column_value].sum().reset_index())
+        df = df.set_index([column_stacked, column_multiple_bars])
+
+    if select_xaxis is not None:
+        df = df.loc[:, [i for i in df.columns if i in select_xaxis]]
+
+    stacked_bar_subplot(df, column_stacked, filename, dict_colors, format_y=format_y, annotation_format=annotation_format,
+                        rotation=rotation, order_scenarios=order_scenarios, dict_scenarios=dict_scenarios,
+                        order_columns=order_stacked, cap=cap, annotate=annotate, show_total=show_total,
+                        fonttick=fonttick, title=title)
+
+
+def stacked_bar_subplot(df, column_group, filename, dict_colors=None, year_ini=None, order_scenarios=None,
+                        order_columns=None,
+                        dict_scenarios=None, rotation=0, fonttick=14, legend=True,
+                        format_y=lambda y, _: '{:.0f} GW'.format(y), annotation_format="{:.0f}",
+                        cap=6, annotate=True, show_total=False, title=None):
+    """
+    Create a stacked bar subplot from a DataFrame.
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame containing the data to plot.
+    column_group : str
+        Column name to group by for the stacked bars.
+    filename : str
+        Path to save the plot image. If None, the plot is shown instead.
+    dict_colors : dict, optional
+        Dictionary mapping column names to colors for the bars. Default is None.
+    figsize : tuple, optional
+        Size of the figure (width, height). Default is (10, 6).
+    year_ini : str, optional
+        Initial year to highlight in the plot. Default is None.
+    order_scenarios : list, optional
+        List of scenario names to order the bars. Default is None.
+    order_columns : list, optional
+        List of column names to order the stacked bars. Default is None.
+    dict_scenarios : dict, optional
+        Dictionary mapping scenario names to new names for the plot. Default is None.
+    rotation : int, optional
+        Rotation angle for x-axis labels. Default is 0.
+    fonttick : int, optional
+        Font size for tick labels. Default is 14.
+    legend : bool, optional
+        Whether to display the legend. Default is True.
+    format_y : function, optional
+        Function to format y-axis labels. Default is a lambda function formatting as '{:.0f} GW'.
+    cap : int, optional
+        Minimum height of bars to annotate. Default is 6.
+    annotate : bool, optional
+        Whether to annotate each bar with its height. Default is True.
+    show_total : bool, optional
+        Whether to show the total value on top of each bar. Default is False.
+    Returns
+    -------
+    None
+    """
+
+    list_keys = list(df.columns)
+    n_scenario = df.index.get_level_values([i for i in df.index.names if i != column_group][0]).unique()
+    num_subplots = int(len(list_keys))
+    n_columns = min(3, num_subplots)  # Limit to 3 columns per row
+    n_rows = int(np.ceil(num_subplots / n_columns))
+    if year_ini is not None:
+        width_ratios = [1] + [len(n_scenario)] * (n_columns - 1)
+    else:
+        width_ratios = [1] * n_columns
+    fig, axes = plt.subplots(n_rows, n_columns, figsize=(10, 6 * n_rows), sharey='all',
+                             gridspec_kw={'width_ratios': width_ratios})
+    axes = np.array(axes).flatten()
+
+    handles, labels = None, None
+    for k, key in enumerate(list_keys):
+        ax = axes[k]
+
+        try:
+            df_temp = df[key].unstack(column_group)
+
+            if key == year_ini:
+                df_temp = df_temp.iloc[0, :]
+                df_temp = df_temp.to_frame().T
+                df_temp.index = ['Initial']
+            else:
+                if dict_scenarios is not None:  # Renaming scenarios for plots
+                    df_temp.index = df_temp.index.map(lambda x: dict_scenarios.get(x, x))
+                if order_scenarios is not None:  # Reordering scenarios
+                    df_temp = df_temp.loc[[c for c in order_scenarios if c in df_temp.index], :]
+                if order_columns is not None:
+                    new_order = [c for c in order_columns if c in df_temp.columns] + [c for c in df_temp.columns if
+                                                                                      c not in order_columns]
+                    df_temp = df_temp.loc[:, new_order]
+
+            df_temp.plot(ax=ax, kind='bar', stacked=True, linewidth=0,
+                         color=dict_colors if dict_colors is not None else None)
+
+            # Annotate each bar
+            if annotate:
+                for container in ax.containers:
+                    for bar in container:
+                        height = bar.get_height()
+                        if height > cap:  # Only annotate bars with a height
+                            ax.text(
+                                bar.get_x() + bar.get_width() / 2,  # X position: center of the bar
+                                bar.get_y() + height / 2,  # Y position: middle of the bar
+                                annotation_format.format(height),  # Annotation text (formatted value)
+                                ha="center", va="center",  # Center align the text
+                                fontsize=10, color="black"  # Font size and color
+                            )
+
+            if show_total:
+                df_total = df_temp.sum(axis=1)
+                for x, y in zip(df_temp.index, df_total.values):
+                    # Put the total at the y-position equal to the total
+                    ax.text(x, y * (1 + 0.02), f"{y:,.0f}", ha='center', va='bottom', fontsize=10,
+                            color='black', fontweight='bold')
+                ax.scatter(df_temp.index, df_total, color='black', s=20)
+
+            ax.spines['left'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
+
+            plt.setp(ax.xaxis.get_majorticklabels(), rotation=rotation)
+            # put tick label in bold
+            ax.tick_params(axis='both', which=u'both', length=0)
+            ax.set_xlabel('')
+
+            if len(list_keys) > 1:
+                title = key
+                if isinstance(key, tuple):
+                    title = '{}-{}'.format(key[0], key[1])
+                ax.set_title(title, fontweight='bold', color='dimgrey', pad=-1.6, fontsize=fonttick)
+            else:
+                if title is not None:
+                    if isinstance(title, tuple):
+                        title = '{}-{}'.format(title[0], title[1])
+                    ax.set_title(title, fontweight='bold', color='dimgrey', pad=-1.6, fontsize=fonttick)
+
+            if k == 0:
+                handles, labels = ax.get_legend_handles_labels()
+                labels = [l.replace('_', ' ') for l in labels]
+                ax.yaxis.set_major_formatter(plt.FuncFormatter(format_y))
+            if k > 0:
+                ax.set_ylabel('')
+                ax.tick_params(axis='y', which='both', left=False, labelleft=False)
+            ax.get_legend().remove()
+
+            # Add a horizontal line at 0
+            ax.axhline(0, color='black', linewidth=0.5)
+
+        except IndexError:
+            ax.axis('off')
+
+        if legend:
+            fig.legend(handles[::-1], labels[::-1], loc='center left', frameon=False, ncol=1,
+                       bbox_to_anchor=(1, 0.5))
+
+    # Hide unused subplots
+    for j in range(k + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    if filename is not None:
+        plt.savefig(filename, bbox_inches='tight')
+        plt.close(fig)
+    else:
+        plt.show()
+
+
+def remove_na_values(df):
+    """Removes na values from a dataframe, to avoind unnecessary labels in plots."""
+    df = df.where((df > 1e-6) | (df < -1e-6),
+                  np.nan)
+    df = df.dropna(axis=1, how='all')
+    return df
+
+
+def select_time_period(df, select_time):
+    """Select a specific time period in a dataframe.
+
+    Parameters
+    ----------
+    df: pd.DataFrame
+        Columns contain season and day
+    select_time: dict
+        For each key, specifies a subset of the dataframe
+
+    Returns
+    -------
+    pd.DataFrame: Dataframe with the selected time period
+    str: String with the selected time period
+    """
+    temp = ''
+    if 'season' in select_time.keys():
+        df = df.loc[df.season.isin(select_time['season'])]
+        temp += '_'.join(select_time['season'])
+    if 'day' in select_time.keys():
+        df = df.loc[df.day.isin(select_time['day'])]
+        temp += '_'.join(select_time['day'])
+    return df, temp
+
+
+def clean_dataframe(df, zone, year, scenario, competition, column_stacked=None, fuel_grouping=None, select_time=None):
+    """
+    Transforms a dataframe from the results GDX into a dataframe with season, day, and time as the index, and format ready for plot.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe containing the results.
+    zone : str
+        The zone to filter the data for.
+    year : int
+        The year to filter the data for.
+    scenario : str
+        The scenario to filter the data for.
+    column_stacked : str
+        Column to use for stacking values in the transformed dataframe.
+    fuel_grouping : dict, optional
+        A dictionary mapping fuels to their respective groups and to sum values over those groups.
+    select_time : dict or None, optional
+        Specific time filter to apply (e.g., "summer").
+
+    Returns
+    -------
+    pd.DataFrame
+        A transformed dataframe with multi-level index (season, day, time).
+
+    Example
+    -------
+    df = epm_dict['FuelDispatch']
+    column_stacked = 'fuel'
+    select_time = {'season': ['m1'], 'day': ['d21', 'd22', 'd23', 'd24', 'd25', 'd26', 'd27', 'd28', 'd29', 'd30']}
+    df = clean_dataframe(df, zone='Liberia', year=2025, scenario='Baseline', column_stacked='fuel', fuel_grouping=None, select_time=select_time)
+    """
+    if 'zone' in df.columns:
+        df = df[(df['zone'] == zone) & (df['year'] == year) & (df['scenario'] == scenario) & (df['competition'] == competition)]
+        df = df.drop(columns=['zone', 'year', 'scenario', 'competition'])
+    else:
+        df = df[(df['year'] == year) & (df['scenario'] == scenario) & (df['competition'] == competition)]
+        df = df.drop(columns=['year', 'scenario', 'competition'])
+
+    if column_stacked == 'fuel':
+        if fuel_grouping is not None:
+            df['fuel'] = df['fuel'].replace(
+                fuel_grouping)  # case-specific, according to level of preciseness for dispatch plot
+
+    if column_stacked is not None:
+        df = (df.groupby(['season', 'day', 't', column_stacked], observed=False).sum().reset_index())
+
+    if select_time is not None:
+        df, temp = select_time_period(df, select_time)
+    else:
+        temp = None
+
+    if column_stacked is not None:
+        df = df.set_index(['season', 'day', 't', column_stacked]).unstack(column_stacked)
+    else:
+        df = df.set_index(['season', 'day', 't'])
+    return df, temp
+
+
+def make_complete_fuel_dispatch_plot(dfs_area, dfs_line, dict_colors, zone, year, scenario, competition,
+                                     filename=None, fuel_grouping=None, select_time=None, reorder_dispatch=None,
+                                     legend_loc='bottom'):
+    """
+    Generates and saves a fuel dispatch plot, including only generation plants.
+
+    Parameters
+    ----------
+    dfs_area : dict
+        Dictionary containing dataframes for area plots.
+    dfs_line : dict
+        Dictionary containing dataframes for line plots.
+    graph_folder : str
+        Path to the folder where the plot will be saved.
+    dict_colors : dict
+        Dictionary mapping fuel types to colors.
+    fuel_grouping : dict
+        Mapping to create aggregate fuel categories, e.g.,
+        {'Battery Storage 4h': 'Battery Storage'}.
+    select_time : dict
+        Time selection parameters for filtering the data.
+    dfs_line_2 : dict, optional
+        Optional dictionary containing dataframes for a secondary line plot.
+
+    Returns
+    -------
+    None
+
+    Example
+    -------
+    Generate and save a fuel dispatch plot:
+    dfs_to_plot_area = {
+        'pFuelDispatch': epm_dict['pFuelDispatch'],
+        'pCurtailedVRET': epm_dict['pCurtailedVRET'],
+        'pDispatch': subset_dispatch
+    }
+    subset_demand = epm_dict['pDispatch'].loc[epm_dict['pDispatch'].attribute.isin(['Demand'])]
+    dfs_to_plot_line = {
+        'pDispatch': subset_demand
+    }
+    fuel_grouping = {
+        'Battery Storage 4h': 'Battery Discharge',
+        'Battery Storage 8h': 'Battery Discharge',
+        'Battery Storage 2h': 'Battery Discharge',
+        'Battery Storage 3h': 'Battery Discharge',
+    }
+    make_complete_fuel_dispatch_plot(dfs_to_plot_area, dfs_to_plot_line, folder_results / Path('images'), dict_specs['colors'],
+                                 zone='Liberia', year=2030, scenario=scenario, fuel_grouping=fuel_grouping,
+                                 select_time=select_time, reorder_dispatch=['MtCoffee', 'Oil', 'Solar'], season=False)
+    """
+    # TODO: Add ax2 to show other data. For example prices would be interesting to show in the same plot.
+
+    tmp_concat_area = []
+    for key in dfs_area:
+        df = dfs_area[key]
+        column_stacked = NAME_COLUMNS[key]
+        df, temp = clean_dataframe(df, zone, year, scenario, competition, column_stacked, fuel_grouping=fuel_grouping,
+                                   select_time=select_time)
+        tmp_concat_area.append(df)
+
+    tmp_concat_line = []
+    for key in dfs_line:
+        df = dfs_line[key]
+
+        df, temp = clean_dataframe(df, zone, year, scenario, competition, None, fuel_grouping=fuel_grouping,
+                                   select_time=select_time)
+        column_stacked = NAME_COLUMNS[key]
+        df = df.rename(columns={'value': column_stacked})
+        tmp_concat_line.append(df)
+
+    df_tot_area = pd.concat(tmp_concat_area, axis=1)
+    df_tot_area = df_tot_area.droplevel(0, axis=1)
+    df_tot_area = remove_na_values(df_tot_area)
+
+    df_tot_line = pd.concat(tmp_concat_line, axis=1)
+    df_tot_line = remove_na_values(df_tot_line)
+
+    if reorder_dispatch is not None:
+        new_order = [col for col in reorder_dispatch if col in df_tot_area.columns] + [col for col in
+                                                                                       df_tot_area.columns if
+                                                                                       col not in reorder_dispatch]
+        df_tot_area = df_tot_area[new_order]
+
+    if select_time is None:
+        temp = 'all'
+    temp = f'{year}_{temp}'
+    if filename is not None:
+        filename = filename.split('.')[0] + f'_{temp}.png'
+
+    dispatch_plot(df_tot_area, filename, df_line=df_tot_line, dict_colors=dict_colors, legend_loc=legend_loc)
+
+
+def dispatch_plot(df_area=None, filename=None, dict_colors=None, df_line=None, figsize=(10, 6), legend_loc='bottom',
+                  ymin=0):
+    """
+    Generate and display or save a dispatch plot with area and line plots.
+
+
+    Parameters
+    ----------
+    df_area : pandas.DataFrame, optional
+        DataFrame containing data for the area plot. If provided, the area plot will be stacked.
+    filename : str, optional
+        Path to save the plot image. If not provided, the plot will be displayed.
+    dict_colors : dict, optional
+        Dictionary mapping column names to colors for the plot.
+    df_line : pandas.DataFrame, optional
+        DataFrame containing data for the line plot. If provided, the line plot will be overlaid on the area plot.
+    figsize : tuple, default (10, 6)
+        Size of the figure in inches.
+    legend_loc : str, default 'bottom'
+        Location of the legend. Options are 'bottom' or 'right'.
+    ymin : int or float, default 0
+        Minimum value for the y-axis.
+    Raises
+    ------
+    ValueError
+        If neither `df_area` nor `df_line` is provided.
+    Notes
+    -----
+    The function will raise an assertion error if `df_area` and `df_line` are provided but do not share the same index.
+
+    Examples
+    --------
+    >>> dispatch_plot(df_area=df_area, df_line=df_line, dict_colors=color_dict, filename='dispatch_plot.png')
+    """
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    if df_area is not None:
+        df_area.plot.area(ax=ax, stacked=True, color=dict_colors, linewidth=0)
+        pd_index = df_area.index
+    if df_line is not None:
+        if df_area is not None:
+            assert df_area.index.equals(
+                df_line.index), 'Dataframes used for area and line do not share the same index. Update the input dataframes.'
+        df_line.plot(ax=ax, color=dict_colors)
+        pd_index = df_line.index
+
+    if (df_area is None) and (df_line is None):
+        raise ValueError('No dataframes provided for the plot. Please provide at least one dataframe.')
+
+    format_dispatch_ax(ax, pd_index)
+
+    # Add axis labels and title
+    ax.set_ylabel('Generation (MWh)', fontweight='bold')
+    # ax.text(0, 1.2, f'Dispatch', fontsize=9, fontweight='bold', transform=ax.transAxes)
+    # set ymin to 0
+    if ymin is not None:
+        ax.set_ylim(bottom=ymin)
+
+    # Add legend bottom center
+    if legend_loc == 'bottom':
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=len(df_area.columns), frameon=False)
+    elif legend_loc == 'right':
+        ax.legend(loc='center left', bbox_to_anchor=(1.1, 0.5), ncol=1, frameon=False)
+
+    if filename is not None:
+        fig.savefig(filename, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+
+
+def format_dispatch_ax(ax, pd_index):
+    # Adding the representative days and seasons
+    n_rep_days = len(pd_index.get_level_values('day').unique())
+    dispatch_seasons = pd_index.get_level_values('season').unique()
+    total_days = len(dispatch_seasons) * n_rep_days
+    y_max = ax.get_ylim()[1]
+
+    for d in range(total_days):
+        x_d = 24 * d
+
+        # Add vertical lines to separate days
+        is_end_of_season = d % n_rep_days == 0
+        linestyle = '-' if is_end_of_season else '--'
+        ax.axvline(x=x_d, color='slategrey', linestyle=linestyle, linewidth=0.8)
+
+        # Add day labels (d1, d2, ...)
+        ax.text(
+            x=x_d + 12,  # Center of the day (24 hours per day)
+            y=y_max * 0.99,
+            s=f'd{(d % n_rep_days) + 1}',
+            ha='center',
+            fontsize=7
+        )
+
+    # Add season labels
+    season_x_positions = [24 * n_rep_days * s + 12 * n_rep_days for s in range(len(dispatch_seasons))]
+    ax.set_xticks(season_x_positions)
+    ax.set_xticklabels(dispatch_seasons, fontsize=8)
+    ax.set_xlim(left=0, right=24 * total_days)
+    ax.set_xlabel('Time')
+    # Remove grid
+    ax.grid(False)
+    # Remove top spine to let days appear
+    ax.spines['top'].set_visible(False)

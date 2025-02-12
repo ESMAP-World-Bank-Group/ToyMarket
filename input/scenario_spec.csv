@@ -1,0 +1,14 @@
+﻿paramNames,HighContract
+A,
+B,
+pAvailability,
+pDuration,
+pFirmData,pFirmDataHighContract.csv
+pFuelPrice,
+pGenData,
+pDemandProfile,
+pDemandForecast,
+pMinGen,
+pScalars,
+pVREgenProfile,
+y,

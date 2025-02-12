@@ -1,0 +1,10 @@
+! barcrossalg=1
+! solutiontype=2
+lpmethod=4
+threads=4
+Names=yes
+! barepcomp=1E-5
+! barcolnz=700
+startalg=4 ! [COMMENT]
+scaind=1 ! [COMMENT]
+predual=-1 ! [COMMENT]
