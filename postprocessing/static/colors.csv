@@ -16,11 +16,11 @@ Solar,orange
 Concentrated Solar,orange
 Trade,thistle
 Import,thistle
-Hydro MC,lightskyblue
 Hydro RoR,lightskyblue
 Hydro Storage,lightskyblue
 Unmet demand,black
 Demand,red
+demand,red
 Exports,green
 Storage Charge,pink
 Onshore Wind,green
@@ -39,3 +39,5 @@ VRE curtail,mediumaquamarine
 Import,pink
 Export,slateblue
 Spinning reserve,dimgrey'
+Cournot,blue
+Least-cost,red

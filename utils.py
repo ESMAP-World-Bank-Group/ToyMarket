@@ -70,6 +70,7 @@ def process_outputs(epm_results, scenarios_rename=None, keys=None):
         if 'attribute' in i.columns:
             epm_dict[k] = epm_dict[k].astype({'attribute': 'str'})
 
+    epm_dict = process_additional_dataframe(epm_dict)
     return epm_dict
 
 
