@@ -36,11 +36,11 @@ def extract_gdx(file, process_sets=False):
 
     return df
 
-def process_outputs(epm_results, scenarios_rename=None, keys=None):
+def process_outputs(epm_results, scenarios_rename=None, keys=None, folder=None, additional_processing=False):
     rename_columns = {'c': 'zone', 'country': 'zone', 'y': 'year', 'v': 'value', 's': 'competition', 'uni': 'attribute',
                       'z': 'zone', 'g': 'generator', 'f': 'fuel', 'q': 'season', 'd': 'day', 't': 't', 'i': 'firm'}
     if keys is None:
-        keys = ['pPrice', 'pDemand', 'pSupplyFirm', 'pGenSupply', 'pSupplyFirm', 'gfmap', 'gimap', 'gtechmap']
+        keys = ['pPrice', 'pDemand', 'pSupplyFirm', 'pGenSupply', 'pSupplyFirm', 'gfmap', 'gimap', 'gtechmap', 'pVarCost']
     epm_dict = {k: i.rename(columns=rename_columns) for k, i in epm_results.items() if
                 k in keys and k in epm_results.keys()}
 
@@ -70,36 +70,60 @@ def process_outputs(epm_results, scenarios_rename=None, keys=None):
         if 'attribute' in i.columns:
             epm_dict[k] = epm_dict[k].astype({'attribute': 'str'})
 
-    epm_dict = process_additional_dataframe(epm_dict)
+    if additional_processing:
+        folder = Path(folder) / Path('output')
+        if not folder.exists():
+            folder.mkdir()
+
+        for k in keys:
+            epm_dict[k].to_csv(Path(folder) / Path(f'{k}.csv'), float_format='%.3f')
+        epm_dict = process_additional_dataframe(epm_dict, folder=folder)
     return epm_dict
 
 
-def process_additional_dataframe(epm_results):
+def process_additional_dataframe(epm_results, folder=None):
     """Postprocessing existing dataframes to obtain additional dataframes"""
     pEnergyByGenerator = epm_results['pGenSupply'].copy().groupby(['scenario', 'competition', 'year', 'generator'], observed=False)['value'].sum().reset_index()
     pEnergyByGeneratorAndSeason = epm_results['pGenSupply'].copy().groupby(['scenario', 'competition', 'year', 'season', 'generator'], observed=False)['value'].sum().reset_index()
     pEnergyByFirm = epm_results['pSupplyFirm'].copy().groupby(['scenario', 'competition', 'year', 'firm'], observed=False)['value'].sum().reset_index()
     pEnergyByFirmAndSeason = epm_results['pSupplyFirm'].copy().groupby(['scenario', 'competition', 'year', 'season', 'firm'], observed=False)['value'].sum().reset_index()
-    epm_results['pEnergyByGenerator'] = pEnergyByGenerator
-    epm_results['pEnergyByGeneratorAndSeason'] = pEnergyByGeneratorAndSeason
-    epm_results['pEnergyByFirm'] = pEnergyByFirm
-    epm_results['pEnergyByFirmAndSeason'] = pEnergyByFirm
 
     pEnergyByFuel = epm_results['pGenSupply'].merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
     pEnergyByFuel = pEnergyByFuel.groupby(['scenario', 'competition', 'year', 'fuel'], observed=False)['value'].sum().reset_index()
-    epm_results['pEnergyByFuel'] = pEnergyByFuel
 
     pEnergyByFuelDispatch = epm_results['pGenSupply'].merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
     pEnergyByFuelDispatch = pEnergyByFuelDispatch.groupby(['scenario', 'competition', 'year', 'season', 'day', 't', 'fuel'], observed=False)['value'].sum().reset_index()
-    epm_results['pEnergyByFuelDispatch'] = pEnergyByFuelDispatch
 
     pEnergyByTech = epm_results['pGenSupply'].merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
     pEnergyByTech = pEnergyByTech.groupby(['scenario', 'competition', 'year', 'tech'], observed=False)['value'].sum().reset_index()
-    epm_results['pEnergyByTech'] = pEnergyByTech
 
     pEnergyByTechDispatch = epm_results['pGenSupply'].merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
     pEnergyByTechDispatch = pEnergyByTechDispatch.groupby(['scenario', 'competition', 'year', 'season', 'day', 't', 'tech'], observed=False)['value'].sum().reset_index()
-    epm_results['pEnergyByTechDispatch'] = pEnergyByTechDispatch
+
+    pGenSupplyWithCost = epm_results['pGenSupply'].merge(epm_results['pVarCost'], on=['scenario', 'generator', 'year'], how='left').rename(columns={'value_x': 'generation', 'value_y': 'VarCost'})
+    pGenSupplyWithCost = pGenSupplyWithCost.merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
+    pGenSupplyWithCost = pGenSupplyWithCost.merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
+    pGenSupplyWithCost = pGenSupplyWithCost.merge(epm_results['gimap'], on=['scenario', 'generator'], how='left')
+
+    additional_df = {
+        'pEnergyByGenerator': pEnergyByGenerator,
+        'pEnergyByGeneratorAndSeason': pEnergyByGeneratorAndSeason,
+        'pEnergyByFirm': pEnergyByFirm,
+        'pEnergyByFirmAndSeason': pEnergyByFirmAndSeason,
+        'pEnergyByFuel': pEnergyByFuel,
+        'pEnergyByFuelDispatch': pEnergyByFuelDispatch,
+        'pEnergyByTech': pEnergyByTech,
+        'pEnergyByTechDispatch': pEnergyByTechDispatch,
+        'pGenSupplyWithCost': pGenSupplyWithCost
+    }
+
+    for key, item in additional_df.items():
+        epm_results[key] = additional_df[key]
+
+    if folder is not None:
+        for key, item in additional_df.items():
+            additional_df[key].to_csv(Path(folder) / Path(f'{key}.csv'), float_format='%.3f')
+
     return epm_results
 
 
@@ -108,7 +132,7 @@ def extract_perfect_competition(folder, file='ResultsPerfectCompetition.gdx'):
     if file in os.listdir(folder):
         file = Path(folder) / Path(file)
         epm_results = extract_gdx(file=file)
-        epm_dict = process_outputs(epm_results)
+        epm_dict = process_outputs(epm_results, additional_processing=False)
         epm_dict['pPrice'] = (epm_dict['pPrice'].loc[epm_dict['pPrice'].competition == 'Least-cost']).drop(
             columns=['competition'])
         epm_dict['pDemand'] = (epm_dict['pDemand'].loc[epm_dict['pDemand'].competition == 'Least-cost']).drop(
@@ -123,6 +147,7 @@ def extract_perfect_competition(folder, file='ResultsPerfectCompetition.gdx'):
 def extract_simulation_folder(folder):
     dict_df = {}
     for scenario in [i for i in os.listdir(folder) if os.path.isdir(os.path.join(folder, i))]:
+        if 'simulation' in scenario:
             dict_df.update({scenario: extract_scenario_folder(Path(folder) / Path(scenario))})
 
     inverted_dict = {

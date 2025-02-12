@@ -116,7 +116,7 @@ gzmap(g,z) = sum((i,tech,f),gmap(g,i,z,tech,f));
 gfmap(g,f) = sum((i,tech,z),gmap(g,i,z,tech,f));
 gtechmap(g,tech) = sum((i,z,f),gmap(g,i,z,tech,f));
 
-* Calculating VarCost
+* Calculating VarCost in $/MWh
 pVarCost(g,y) = pGenData(g,'VOM') + (pGenData(g,'HeatRate') * sum(f$(gfmap(g,f)), 
                         pFuelPrice(f,y)))$(sum(f$gfmap(g,f), pFuelPrice(f,y)));
                         

@@ -236,7 +236,7 @@ def launch_market_multiple_scenarios(scenario_baseline='scenario_baseline.csv',
 
 if __name__ == '__main__':
     launch_market_multiple_scenarios(scenario_baseline='input/scenario_baseline.csv',
-                                     scenarios_specification='input/scenario_spec.csv',
-                                     selected_scenarios=None,
+                                     scenarios_specification='input/scenario_spec_elasticity.csv',
+                                     selected_scenarios=['Elasticity0p8'],
                                      cpu=1, path_gams=None,
                                      path_engine_file=None)

@@ -1,6 +1,13 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+from pathlib import Path
+import os
+
+import plotly.express as px
+import plotly.graph_objects as go
+# import ipywidgets as widgets
+# from IPython.display import display
 
 
 NAME_COLUMNS = {
@@ -40,7 +47,25 @@ def read_plot_specs():
     return dict_specs
 
 
-def standardize_names(dict_df, key, mapping, column='fuel'):
+def create_folders_imgs(folder):
+    """
+    Creating folders for images
+
+    Parameters:
+    ----------
+    folder: str
+        Path to the folder where the images will be saved.
+
+    """
+    for p in [path for path in Path(folder).iterdir() if path.is_dir()]:
+        if 'simulation' in str(p):
+            if not (p / Path('images')).is_dir():
+                os.mkdir(p / Path('images'))
+    if not (Path(folder) / Path('images')).is_dir():
+        os.mkdir(Path(folder) / Path('images'))
+
+
+def standardize_names(dict_df, key, mapping, column='fuel', sum=True):
     """
     Standardize the names of fuels in the dataframes.
 
@@ -61,7 +86,8 @@ def standardize_names(dict_df, key, mapping, column='fuel'):
     if key in dict_df.keys():
         temp = dict_df[key].copy()
         temp[column] = temp[column].replace(mapping)
-        temp = temp.groupby([i for i in temp.columns if i != 'value'], observed=False).sum().reset_index()
+        if sum:
+            temp = temp.groupby([i for i in temp.columns if i != 'value'], observed=False).sum().reset_index()
 
         new_fuels = [f for f in temp[column].unique() if f not in mapping.values()]
         if new_fuels:
@@ -76,6 +102,7 @@ def standardize_names(dict_df, key, mapping, column='fuel'):
 def process_for_labels(epm_dict, dict_specs):
     if dict_specs is not None:
         standardize_names(epm_dict, 'pEnergyByFuel', dict_specs['fuel_mapping'], column='fuel')
+        standardize_names(epm_dict, 'pGenSupplyWithCost', dict_specs['fuel_mapping'], column='fuel', sum=False)
         standardize_names(epm_dict, 'pEnergyByTech', dict_specs['tech_mapping'], column='tech')
         standardize_names(epm_dict, 'pEnergyByFuelDispatch', dict_specs['fuel_mapping'], column='fuel')
     return epm_dict
@@ -186,6 +213,7 @@ def make_stacked_bar_subplots(df, filename, dict_colors, selected_zone=None, sel
                         rotation=rotation, order_scenarios=order_scenarios, dict_scenarios=dict_scenarios,
                         order_columns=order_stacked, cap=cap, annotate=annotate, show_total=show_total,
                         fonttick=fonttick, title=title)
+
 
 
 def stacked_bar_subplot(df, column_group, filename, dict_colors=None, year_ini=None, order_scenarios=None,
@@ -343,9 +371,11 @@ def stacked_bar_subplot(df, column_group, filename, dict_colors=None, year_ini=N
         plt.show()
 
 
+
+
 def make_multiple_lines_subplots(df, filename, dict_colors, selected_zone=None, selected_year=None, column_subplots='scenario',
                               column_multiple_lines='competition', column_xaxis='t',
-                              column_value='value', select_xaxis=None, order_scenarios=None,
+                              column_value='value', select_subplots=None, order_scenarios=None,
                               dict_scenarios=None,
                               format_y=lambda y, _: '{:.0f} MW'.format(y),  annotation_format="{:.0f}",
                               order_stacked=None, max_ticks=10, annotate=True,
@@ -411,8 +441,8 @@ def make_multiple_lines_subplots(df, filename, dict_colors, selected_zone=None, 
         df = df.set_index([column_multiple_lines, column_xaxis])
 
     # TODO: change select_axis name
-    if select_xaxis is not None:
-        df = df.loc[:, [i for i in df.columns if i in select_xaxis]]
+    if select_subplots is not None:
+        df = df.loc[:, [i for i in df.columns if i in select_subplots]]
 
     multiple_lines_subplot(df, column_multiple_lines, filename, dict_colors, format_y=format_y, annotation_format=annotation_format,
                         rotation=rotation, order_scenarios=order_scenarios, dict_scenarios=dict_scenarios,
@@ -650,7 +680,7 @@ def clean_dataframe(df, zone, year, scenario, competition, column_stacked=None, 
 
 def make_complete_fuel_dispatch_plot(dfs_area, dfs_line, dict_colors, zone, year, scenario, competition,
                                      filename=None, fuel_grouping=None, select_time=None, reorder_dispatch=None,
-                                     legend_loc='bottom'):
+                                     legend_loc='bottom', figsize=(10, 6), interactive=False):
     """
     Generates and saves a fuel dispatch plot, including only generation plants.
 
@@ -737,7 +767,12 @@ def make_complete_fuel_dispatch_plot(dfs_area, dfs_line, dict_colors, zone, year
     if filename is not None:
         filename = filename.split('.')[0] + f'_{temp}.png'
 
-    dispatch_plot(df_tot_area, filename, df_line=df_tot_line, dict_colors=dict_colors, legend_loc=legend_loc)
+    if not interactive:
+        dispatch_plot(df_tot_area, filename, df_line=df_tot_line, dict_colors=dict_colors, legend_loc=legend_loc,
+                      figsize=figsize)
+    else:
+        # TODO: not working currently
+        dispatch_plot_interactive(df_area=df_tot_area, df_line=df_tot_line, dict_colors=dict_colors)
 
 
 def dispatch_plot(df_area=None, filename=None, dict_colors=None, df_line=None, figsize=(10, 6), legend_loc='bottom',
@@ -772,7 +807,7 @@ def dispatch_plot(df_area=None, filename=None, dict_colors=None, df_line=None, f
 
     Examples
     --------
-    >>> dispatch_plot(df_area=df_area, df_line=df_line, dict_colors=color_dict, filename='dispatch_plot.png')
+
     """
 
     fig, ax = plt.subplots(figsize=figsize)
@@ -800,8 +835,10 @@ def dispatch_plot(df_area=None, filename=None, dict_colors=None, df_line=None, f
         ax.set_ylim(bottom=ymin)
 
     # Add legend bottom center
+    legend_ncol = max(1, min(len(df_area.columns), 5))
+
     if legend_loc == 'bottom':
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=len(df_area.columns), frameon=False)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=legend_ncol, frameon=False)
     elif legend_loc == 'right':
         ax.legend(loc='center left', bbox_to_anchor=(1.1, 0.5), ncol=1, frameon=False)
 
@@ -810,6 +847,75 @@ def dispatch_plot(df_area=None, filename=None, dict_colors=None, df_line=None, f
         plt.close()
     else:
         plt.show()
+
+
+def dispatch_plot_interactive(df_area=None, df_line=None, dict_colors=None, legend_loc='bottom', ymin=0):
+    """
+    Generate an interactive Plotly dispatch plot.
+    """
+
+    fig = go.Figure()
+
+    # **Stacked Area Plots (Ensuring Proper Hover & Order)**
+    if df_area is not None:
+        for col in df_area.columns:
+            fig.add_trace(go.Scatter(
+                x=df_area.index, y=df_area[col], mode='lines', fill='tonexty',
+                name=col, stackgroup='one', line=dict(width=0),  # No borders
+                marker=dict(color=dict_colors.get(col, None)),
+                hoverinfo='x+y+name'  # Show value per area individually
+            ))
+
+    # **Line Plots (Overlay)**
+    if df_line is not None:
+        for col in df_line.columns:
+            fig.add_trace(go.Scatter(
+                x=df_line.index, y=df_line[col], mode='lines', name=col,
+                line=dict(color=dict_colors.get(col, 'black'), width=2, dash='dash'),
+                hoverinfo='x+y+name'  # Show demand separately
+            ))
+
+    # **Extract Time Structure**
+    days = df_area.index.get_level_values('day').unique()
+    seasons = df_area.index.get_level_values('season').unique()
+    total_days = len(seasons) * len(days)
+    y_max = df_area.max().max() * 1.05  # Extend ymax slightly for labels
+
+    # **Vertical Lines for Day Separators**
+    for d, day in enumerate(days):
+        fig.add_vline(x=f"{day} - 0h", line_width=1, line_dash="dash", line_color="slategrey")
+
+        # **Add day labels (d1, d2, ...) at 12h**
+        fig.add_annotation(
+            x=f"{day} - 12h", y=y_max,
+            text=day, showarrow=False, font=dict(size=10, color="black"),
+            yshift=5
+        )
+
+    # **Add Season Labels**
+    season_x_positions = [f"d{d + 1} - 12h" for d in range(len(days))]
+    fig.update_xaxes(
+        tickmode="array",
+        tickvals=season_x_positions,
+        ticktext=[s for s in seasons],
+        title_text="Time"
+    )
+
+    # **Legend Positioning**
+    legend_x, legend_y = (0.5, -0.2) if legend_loc == 'bottom' else (1.1, 0.5)
+
+    # **Update Layout**
+    fig.update_layout(
+        title="Dispatch Plot",
+        xaxis_title="Time",
+        yaxis_title="Generation (MWh)",
+        legend=dict(x=legend_x, y=legend_y, orientation="h" if legend_loc == 'bottom' else "v"),
+        template="plotly_white",
+        hovermode="x unified",  # Keep x-axis hover synchronized
+        yaxis=dict(range=[ymin, y_max]),  # Adjust based on max value
+    )
+
+    fig.show()
 
 
 def format_dispatch_ax(ax, pd_index):
@@ -846,3 +952,165 @@ def format_dispatch_ax(ax, pd_index):
     ax.grid(False)
     # Remove top spine to let days appear
     ax.spines['top'].set_visible(False)
+
+
+def subplot_scatter(df, column_xaxis, column_yaxis, column_color, color_dict, figsize=(12, 8),
+                    ymax=None, xmax=None, title='', legend=None, filename=None,
+                    size_scale=None, annotate_thresh=None, column_annotate=None, subplot_column=None, column_scale=None):
+    """
+    Creates scatter plots with points colored based on the values in a specific column.
+    Supports optional subplots based on a categorical column.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing the data.
+    column_xaxis : str
+        Column name for x-axis values.
+    column_yaxis : str
+        Column name for y-axis values.
+    column_color : str
+        Column name for categorical values determining color.
+    color_dict : dict
+        Dictionary mapping values in column_color to specific colors.
+    ymax : float, optional
+        Maximum y-axis value.
+    xmax : float, optional
+        Maximum x-axis value.
+    title : str, optional
+        Title of the plot.
+    legend : str, optional
+        Title for the legend.
+    filename : str, optional
+        File name to save the plot. If None, the plot is displayed.
+    size_scale : float, optional
+        Scaling factor for point sizes.
+    annotate_thresh : float, optional
+        Threshold for annotating points with generator names.
+    subplot_column : str, optional
+        Column name to split the data into subplots.
+
+    Returns
+    -------
+    None
+        Displays the scatter plots.
+    """
+    # If subplots are required
+    if subplot_column is not None:
+        unique_values = df[subplot_column].unique()
+        n_subplots = len(unique_values)
+        ncols = min(3, n_subplots)  # Limit to 3 columns per row
+        nrows = int(np.ceil(n_subplots / ncols))
+
+        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(figsize[0] * ncols, figsize[1] * nrows),
+                                 sharex=True, sharey=True)
+        axes = np.array(axes).flatten()  # Ensure axes is an iterable 1D array
+
+        for i, val in enumerate(unique_values):
+            ax = axes[i]
+            subset_df = df[df[subplot_column] == val]
+
+            scatter_plot_on_ax(ax, subset_df, column_xaxis, column_yaxis, column_color, color_dict,
+                               ymax, xmax, title=f"{title} - {subplot_column}: {val}",
+                               legend=False, size_scale=size_scale, column_scale=column_scale,
+                               annotate_thresh=annotate_thresh, column_annotate=column_annotate)
+
+        # Hide unused subplots
+        for j in range(i + 1, len(axes)):
+            fig.delaxes(axes[j])
+
+        handles, labels = scatter_plot_on_ax(None, df, column_xaxis, column_yaxis, column_color, color_dict,
+                                             legend=True, size_scale=size_scale, column_scale=column_scale)
+
+        fig.legend(handles, labels, title=legend, loc="center left", bbox_to_anchor=(1, 0.5), frameon=False)
+
+        # plt.tight_layout(rect=[0, 0, 0.85, 1])  # Adjust layout to fit the legend
+
+        plt.tight_layout()
+    else:
+        # If no subplots, plot normally
+        fig, ax = plt.subplots(figsize=(8, 6))
+        scatter_plot_on_ax(ax, df, column_xaxis, column_yaxis, column_color, color_dict,
+                           ymax, xmax, title=title, legend=legend,
+                           size_scale=size_scale, column_scale=column_scale,
+                           annotate_thresh=annotate_thresh, column_annotate=column_annotate)
+
+    if filename is not None:
+        plt.savefig(filename, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+
+
+def scatter_plot_on_ax(ax, df, column_xaxis, column_yaxis, column_color, color_dict,
+                       ymax=None, xmax=None, title='', legend=None,
+                       size_scale=None, column_scale=None, annotate_thresh=None, column_annotate=None):
+    """
+    Helper function to create a scatter plot on a given matplotlib Axes.
+    """
+    unique_values = df[column_color].unique()
+    handles = []
+    labels = []
+
+    if ax is not None:
+        for val in unique_values:
+            if val not in color_dict:
+                raise ValueError(f"No color specified for value '{val}' in {column_color}")
+
+        color_dict = {val: color_dict[val] for val in unique_values}
+
+        # Determine sizes of points
+        sizes = 50
+        if size_scale is not None:
+            assert column_scale is not None, "Size scale is required but column to scale not provided."
+            sizes = df[column_scale] * size_scale
+
+        # Plot each category separately
+        for value, color in color_dict.items():
+            subset = df[df[column_color] == value]
+            scatter = ax.scatter(subset[column_xaxis], subset[column_yaxis],
+                                 label=value, color=color, alpha=0.7,
+                                 s=sizes[subset.index] if size_scale else sizes)
+
+            # Annotate points above a certain threshold
+            if annotate_thresh is not None:
+                assert column_annotate is not None, 'Annotate is required but no column is provided for the threshold used in the annotation.'
+                for i, txt in enumerate(subset['generator']):
+                    if abs(subset[column_annotate].iloc[i]) > annotate_thresh:
+                        x_value, y_value = subset[column_xaxis].iloc[i], subset[column_yaxis].iloc[i]
+                        ax.annotate(
+                            txt,
+                            (x_value, y_value),  # Point location
+                            xytext=(5, 10),  # Offset in points (x, y)
+                            textcoords='offset points',  # Use an offset from the data point
+                            fontsize=9,
+                            color='black',
+                            ha='left'
+                        )
+                        # ax.annotate(txt, (subset[column_xaxis].iloc[i], subset[column_yaxis].iloc[i]), color='black')
+
+        if ymax is not None:
+            ax.set_ylim(0, ymax)
+
+        if xmax is not None:
+            ax.set_xlim(0, xmax)
+
+        ax.set_xlabel(column_xaxis)
+        ax.set_ylabel(column_yaxis)
+        ax.set_title(title)
+
+        # # Remove legend from each subplot to avoid redundancy
+        # if legend is not None:
+        #     ax.legend(title=legend, frameon=False)
+
+        ax.grid(True, linestyle='--', alpha=0.5)
+
+    for value in unique_values:
+        handles.append(plt.Line2D([0], [0], marker='o', color='w', label=value,
+                                  markerfacecolor=color_dict[value], markersize=8))
+        labels.append(value)
+
+    if legend and ax is not None:
+        ax.legend(handles, labels, title=legend, frameon=False)
+
+    return handles, labels
