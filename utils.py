@@ -207,7 +207,8 @@ def estimate_demand_slope_intercept(demand, price, elasticity, folder, scenario)
     return scenario
 
 def estimate_hourly_contracting(pSupplyFirm, pFirmData, folder, scenario):
-    """Calculates hourly contracted volume per firm based on supply under perfect competition setting."""
+    """Calculates hourly contracted volume per firm based on supply under perfect competition setting.
+    This will only estimate contracted volume for Cournot firms."""
     pContractVolume = (pFirmData * pSupplyFirm).dropna()
 
     if not (Path(folder) / Path('input')).is_dir():
@@ -228,6 +229,7 @@ def load_additional_data(scenario):
     }
 
     pFirmData = pd.read_csv(scenario['pFirmData'], index_col=[0,1,2])
+    pFirmData = pFirmData.dropna().drop(columns='Fringe').rename(columns={'ContractLevel': 'value'})
     additional_data['pFirmData'] = pFirmData
     return additional_data
 
@@ -237,7 +239,7 @@ def prepare_data_for_cournot(d, scenario, additional_data, folder):
     price = d['pPrice'].set_index([ 'zone', 'year', 'season', 'day', 't'])
     scenario = estimate_demand_slope_intercept(demand, price, additional_data['elasticity'], folder, scenario)
     supplyfirm = d['pSupplyFirm'].drop(columns=['competition']).set_index(['firm', 'zone', 'year', 'season', 'day', 't'])
-    scenario = estimate_hourly_contracting(supplyfirm, additional_data['pFirmData'].rename(columns={'ContractLevel': 'value'}), folder, scenario)
+    scenario = estimate_hourly_contracting(supplyfirm, additional_data['pFirmData'], folder, scenario)
     return scenario
 
 

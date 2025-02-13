@@ -29,11 +29,18 @@ gtechmap(g,tech)                     'Map generators to technologies'
 
 eg(g)                          'existing generators'
 committed(g)                          'committed generators'
+fringefirms(i)                       'Fringe generators'
+cournotfirms(i)                      'Cournot-behaving generators'
 
 sGenMap                        'Set of parameters for Generators tab'       /StYr, RetrYr, Capacity, Status, HeatRate, FOM, VOM, RampUpRate,
                                                                             RampDownRate, VRE/
-sFirmMap                        'Set of parameters for Generators tab'      /ContractLevel/
+sFirmMap                        'Set of parameters for Generators tab'      /Fringe, ContractLevel/
 
+
+gstatus                         'generator status' / Existing, Candidate, Committed /
+gstatusmap(g,gstatus)           'Generator status map'
+istatus                         'firm status' /Fringe, Cournot/
+istatusmap(i, istatus)          'Firm status map'
 ;
 
 ALIAS (y,yy)
@@ -54,7 +61,8 @@ A(z,y,q,d,t)                       'Coefficient A of the inverse demand function
 B(z,y,q,d,t)                       'Coefficient B of the inverse demand function'
 pGenDatax(g,i,z,tech,f, sGenMap)              'Generation data'
 pGenData(g,sGenMap)              'Generation data'
-pFirmData(i,z,y,sFirmMap)            'Firm data'
+pFirmDatax(i,z,y,sFirmMap)            'Firm data'
+pFirmData(i,sFirmMap)            'Firm data'
 pDemandProfile(z,q,d,t)              'Demand profile'
 pDemandForecast(z,*,y)                'Demand forecast'
 pFixedDemand(z,y,q,d,t)         'Fixed demand profile for model with perfect competition'
@@ -71,6 +79,9 @@ pScalars(*)                      'Parameter with scalars'
 
 pRR(y)                          'Discount rate'
 pWeightYear(y)
+
+gstatIndex(gstatus) / Existing 0, Candidate 2, Committed 1 /
+istatIndex(istatus) / Cournot 0, Fringe 1 /;
 ;
 
 *----------------------------------------------------------------------------------------
@@ -115,7 +126,7 @@ eObjFunCournot..
             vObjVal =E=
             sum((y,z,q,d,t), pWeightYear(y) * pRR(y) * pDuration(q,d,t) * (A(z,y,q,d,t)-0.5*B(z,y,q,d,t)*vSupplyMarket(z,y,q,d,t))*vSupplyMarket(z,y,q,d,t)) 
             - sum((y,g,q,d,t), pWeightYear(y) * pRR(y) * pDuration(q,d,t) * pVarCost(g,y)*vGenSupply(y,g,q,d,t)) 
-            - sum((i,z,y,q,d,t), pWeightYear(y) * pRR(y) * pDuration(q,d,t) * 0.5*B(z,y,q,d,t)*sqr((sum(g$(gzmap(g,z) AND gimap(g,i)), vGenSupply(y,g,q,d,t)) - pContractVolume(i,z,y,q,d,t))));
+            - sum((cournotfirms,z,y,q,d,t), pWeightYear(y) * pRR(y) * pDuration(q,d,t) * 0.5*B(z,y,q,d,t)*sqr((sum(g$(gzmap(g,z) AND gimap(g,cournotfirms)), vGenSupply(y,g,q,d,t)) - pContractVolume(cournotfirms,z,y,q,d,t))));
                    
 
 eJointCap(g,y,q,d,t)..

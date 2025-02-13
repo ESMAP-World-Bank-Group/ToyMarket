@@ -3,9 +3,9 @@ A,,
 B,,
 pAvailability,,
 pDuration,,
-pFirmData,firm/pFirmDataHighContract.csv,
+pFirmData,firm/pFirmDataHighContract.csv,firm/pFirmDataAllFringe.csv
 pFuelPrice,,
-pGenData,,gendata/pGenDataFringe.csv
+pGenData,,
 pDemandProfile,,
 pDemandForecast,,
 pMinGen,,

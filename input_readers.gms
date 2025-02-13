@@ -25,7 +25,7 @@ $onEmbeddedCode Connect:
 
 - CSVReader:
     trace: 0
-    file: input/pGenData.csv
+    file: input/gendata/pGenData.csv
     name: gmap
     indexSubstitutions: {.nan: ""}
     valueSubstitutions: {0: .nan}
@@ -34,7 +34,7 @@ $onEmbeddedCode Connect:
 
 - CSVReader:
     trace: 0
-    file: input/pGenData.csv
+    file: input/gendata/pGenData.csv
     name: pGenDatax
     indexSubstitutions: {.nan: ""}
     valueSubstitutions: {0: .nan}
@@ -44,8 +44,8 @@ $onEmbeddedCode Connect:
 
 - CSVReader:
     trace: 0
-    file: input/pFirmData.csv
-    name: pFirmData
+    file: input/firm/pFirmData.csv
+    name: pFirmDatax
     indexSubstitutions: {.nan: ""}
     valueSubstitutions: {0: .nan}
     indexColumns: [1,2,3]
@@ -107,7 +107,7 @@ $onEmbeddedCode Connect:
     
 - CSVReader:
     trace: 0
-    file: input/pScalars.csv
+    file: input/settings/pScalars.csv
     name: pScalars
     indexColumns: [1]
     valueColumns: [2]
@@ -165,7 +165,7 @@ $onEmbeddedCode Connect:
 - CSVReader:
     trace: 0
     file: %pFirmData%
-    name: pFirmData
+    name: pFirmDatax
     indexSubstitutions: {.nan: ""}
     valueSubstitutions: {0: .nan}
     indexColumns: [1,2,3]
