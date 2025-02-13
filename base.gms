@@ -61,7 +61,7 @@ A(z,y,q,d,t)                       'Coefficient A of the inverse demand function
 B(z,y,q,d,t)                       'Coefficient B of the inverse demand function'
 pGenDatax(g,i,z,tech,f, sGenMap)              'Generation data'
 pGenData(g,sGenMap)              'Generation data'
-pFirmDatax(i,z,y,sFirmMap)            'Firm data'
+pFirmDatax(i,z,sFirmMap)            'Firm data'
 pFirmData(i,sFirmMap)            'Firm data'
 pDemandProfile(z,q,d,t)              'Demand profile'
 pDemandForecast(z,*,y)                'Demand forecast'

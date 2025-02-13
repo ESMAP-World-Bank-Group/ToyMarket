@@ -47,8 +47,7 @@ $onEmbeddedCode Connect:
     file: input/firm/pFirmData.csv
     name: pFirmDatax
     indexSubstitutions: {.nan: ""}
-    valueSubstitutions: {0: .nan}
-    indexColumns: [1,2,3]
+    indexColumns: [1,2]
     header: [1]
     type: par
     
@@ -167,8 +166,7 @@ $onEmbeddedCode Connect:
     file: %pFirmData%
     name: pFirmDatax
     indexSubstitutions: {.nan: ""}
-    valueSubstitutions: {0: .nan}
-    indexColumns: [1,2,3]
+    indexColumns: [1,2]
     header: [1]
     type: par
     

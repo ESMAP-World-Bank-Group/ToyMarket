@@ -83,10 +83,14 @@ $endIf
 * sStartYear(y) = y.first;
 
 pGenData(g,sGenMap) = sum((i,z,tech,f), pGenDatax(g,i,z,tech,f,sGenMap));
-pFirmData(i,sFirmMap) = sum((z,y), pFirmDatax(i,z,y,sFirmMap));
+pFirmData(i,sFirmMap) = sum((z), pFirmDatax(i,z,sFirmMap));
+
 
 gstatusmap(g,gstatus) = pGenData(g,'status')=gstatIndex(gstatus);
 istatusmap(i,istatus) = pFirmData(i,'Fringe')=istatIndex(istatus);
+
+display istatusmap;
+
 
 
 committed(g) = gstatusmap(g,'Committed');
@@ -127,7 +131,7 @@ pRR(y) = 1/[(1+pScalars("DR"))**(sum(yy$(ord(yy)<ord(y)), pWeightYear(yy)))];
 
 pFixedDemand(z,y,q,d,t) = pDemandProfile(z,q,d,t) * pDemandForecast(z,'Peak',y);
 
-execute_unload '%GDX_INPUT%_common' gimap, gzmap, gfmap, gtechmap, pVarCost, pFixedDemand, pWeightYear, pRR;
+execute_unload '%GDX_INPUT%_common' gimap, gzmap, gfmap, gtechmap, istatusmap, pVarCost, pFixedDemand, pFirmData, pWeightYear, pRR;
 
 
 *----------------------------------------------------------------------------------------
