@@ -5,6 +5,22 @@ from pathlib import Path
 import gams.transfer as gt
 import os
 
+
+def input_checks(scenario):
+    """Checking inputs for inconsistencies."""
+    pGenData = pd.read_csv(scenario['pGenData'])
+    pFirmData = pd.read_csv(scenario['pFirmData'])
+
+    # Ensure firm lists match exactly
+    missing_in_firm = set(pGenData.firm.unique()) - set(pFirmData.firm.unique())
+
+    if missing_in_firm:
+        raise ValueError(f"Mismatch in firm definitions!\n"
+                         f"Firms in pGenData but not in pFirmData: {missing_in_firm}\n")
+
+    print("Input check passed: All firms in pGenData are defined in pFirmData.")
+
+
 def extract_gdx(file, process_sets=False):
     """
     Extract information as pandas DataFrame from a gdx file.
@@ -78,7 +94,10 @@ def process_outputs(epm_results, scenarios_rename=None, keys=None, folder=None, 
             folder.mkdir()
 
         for k in keys:
-            epm_dict[k].to_csv(Path(folder) / Path(f'{k}.csv'), float_format='%.3f')
+            try:
+                epm_dict[k].to_csv(Path(folder) / Path(f'{k}.csv'), float_format='%.3f')
+            except Exception as e:
+                print(f"Skipping {k} due to error: {e}")
         epm_dict = process_additional_dataframe(epm_dict, folder=folder)
     return epm_dict
 
@@ -106,7 +125,11 @@ def process_additional_dataframe(epm_results, folder=None):
     pGenSupplyWithCost = pGenSupplyWithCost.merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
     pGenSupplyWithCost = pGenSupplyWithCost.merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
     pGenSupplyWithCost = pGenSupplyWithCost.merge(epm_results['gimap'], on=['scenario', 'generator'], how='left')
-    pGenSupplyWithCost = pGenSupplyWithCost.merge(epm_results['istatusmap'], on=['scenario', 'firm'], how='left')
+    try:
+        pGenSupplyWithCost = pGenSupplyWithCost.merge(epm_results['istatusmap'], on=['scenario', 'firm'], how='left')
+    except Exception as e:
+        print(f"Skipping pGenSupplyWithCost due to error: {e}")
+
 
     additional_df = {
         'pEnergyByGenerator': pEnergyByGenerator,
