@@ -41,6 +41,16 @@ $onEmbeddedCode Connect:
     indexColumns: [1,2,3,4,5]
     header: [1]
     type: par
+    
+- CSVReader:
+    trace: 0
+    file: input/pStorageData.csv
+    name: pStorageData
+    indexSubstitutions: {.nan: ""}
+    valueSubstitutions: {0: .nan}
+    indexColumns: [1]
+    header: [1]
+    type: par
 
 - CSVReader:
     trace: 0
@@ -158,6 +168,16 @@ $onEmbeddedCode Connect:
     indexSubstitutions: {.nan: ""}
     valueSubstitutions: {0: .nan}
     indexColumns: [1,2,3,4,5]
+    header: [1]
+    type: par
+    
+- CSVReader:
+    trace: 0
+    file: %pStorageData%
+    name: pStorageData
+    indexSubstitutions: {.nan: ""}
+    valueSubstitutions: {0: .nan}
+    indexColumns: [1]
     header: [1]
     type: par
 

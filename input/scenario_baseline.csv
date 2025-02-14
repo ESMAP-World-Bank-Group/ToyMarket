@@ -6,6 +6,7 @@ pDuration,pDuration.csv
 pFirmData,firm/pFirmData.csv
 pFuelPrice,pFuelPrice.csv
 pGenData,gendata/pGenData.csv
+pStorageData,pStorageData.csv
 pDemandProfile,pDemandProfile.csv
 pDemandForecast,pDemandForecast.csv
 pMinGen,pMinGen.csv

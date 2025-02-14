@@ -6,6 +6,7 @@ pDuration,,,,
 pFirmData,firm/pFirmDataContract1.csv,firm/pFirmDataContract0p8.csv,firm/pFirmDataFringe.csv,firm/pFirmDataCoalDifferentiate.csv
 pFuelPrice,,,,
 pGenData,,,,gendata/pGenDataCoalDifferentiate.csv
+pStorageData,,,,
 pDemandProfile,,,,
 pDemandForecast,,,,
 pMinGen,,,,

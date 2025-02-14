@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import os
-
+from matplotlib.patches import Patch
+from itertools import cycle
 import plotly.express as px
 import plotly.graph_objects as go
 # import ipywidgets as widgets
@@ -558,7 +559,7 @@ def multiple_lines_subplot(df, column_multiple_lines, filename, dict_colors=None
                 handles, labels = ax.get_legend_handles_labels()
                 labels = [l.replace('_', ' ') for l in labels]
                 ax.yaxis.set_major_formatter(plt.FuncFormatter(format_y))
-            if k > 0:
+            if k % n_columns != 0:
                 ax.set_ylabel('')
                 ax.tick_params(axis='y', which='both', left=False, labelleft=False)
             ax.get_legend().remove()
@@ -1113,4 +1114,131 @@ def scatter_plot_on_ax(ax, df, column_xaxis, column_yaxis, column_color, color_d
     if legend and ax is not None:
         ax.legend(handles, labels, title=legend, frameon=False)
 
+    return handles, labels
+
+
+def subplot_pie_new(df, index, dict_colors=None, subplot_column=None, share_column='value', title='', figsize=(16, 4),
+                    percent_cap=1, filename=None, rename=None, bbox_to_anchor=(0.5, -0.1), loc='lower center'):
+    """
+    Creates pie charts for data grouped by a column, or a single pie chart if no grouping is specified.
+
+    Parameters:
+    ----------
+    df: pd.DataFrame
+        DataFrame containing the data
+    index: str
+        Column to use for the pie chart
+    dict_colors: dict
+        Dictionary mapping the index values to colors
+    subplot_column: str, optional
+        Column to use for subplots. If None, a single pie chart is created.
+    title: str, optional
+        Title of the plot
+    figsize: tuple, optional, default=(16, 4)
+        Size of the figure
+    percent_cap: float, optional, default=1
+        Minimum percentage to show in the pie chart
+    filename: str, optional
+        Path to save the plot
+    bbox_to_anchor: tuple
+        Position of the legend compared to the figure
+    loc: str
+        Localization of the legend
+    """
+    if rename is not None:
+        df[index] = df[index].replace(rename)
+
+    if dict_colors is None:
+        unique_labels = df[index].unique()
+        color_cycle = cycle(plt.cm.get_cmap("tab10").colors)  # Choose a colormap
+        dict_colors = {label: next(color_cycle) for label in unique_labels}
+
+    if subplot_column is not None:
+        # Group by the column for subplots
+        groups = df.groupby(subplot_column)
+
+        # Calculate the number of subplots
+        num_subplots = len(groups)
+        ncols = min(3, num_subplots)  # Limit to 3 columns per row
+        nrows = int(np.ceil(num_subplots / ncols))
+
+        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(figsize[0], figsize[1] * nrows))
+        axes = np.array(axes).flatten()  # Ensure axes is iterable 1D array
+
+        all_labels = set()  # Collect all labels for the combined legend
+        for ax, (name, group) in zip(axes, groups):
+            colors = [dict_colors[f] for f in group[index]]
+            handles, labels = plot_pie_on_ax(ax, group, index, share_column, percent_cap, colors,
+                                             title=f"{title} - {subplot_column}: {name}")
+            all_labels.update(group[index])  # Collect unique labels
+
+        # Hide unused subplots
+        for j in range(len(groups), len(axes)):
+            fig.delaxes(axes[j])
+
+        # Create a shared legend below the graphs
+        all_labels = sorted(all_labels)  # Sort labels for consistency
+        handles = [plt.Line2D([0], [0], marker='o', color=dict_colors[label], linestyle='', markersize=10)
+                   for label in all_labels]
+        fig.legend(
+            handles,
+            all_labels,
+            loc=loc,
+            bbox_to_anchor=bbox_to_anchor,
+            ncol=1,  # Adjust number of columns based on subplots
+            frameon=False, fontsize=16
+        )
+
+        # Add title for the whole figure
+        fig.suptitle(title, fontsize=16)
+
+    else:  # Create a single pie chart if no subplot column is specified
+        fig, ax = plt.subplots(figsize=(8, 6))
+        colors = [dict_colors[f] for f in df[index]]
+        handles, labels = plot_pie_on_ax(ax, df, index, share_column, percent_cap, colors, title)
+
+    # Save the figure if filename is provided
+    plt.tight_layout()
+
+    if filename:
+        plt.savefig(filename, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+
+
+def plot_pie_on_ax(ax, df, index, share_column, percent_cap, colors, title, radius=None, annotation_size=8):
+    """Pie plot on a single axis."""
+    if radius is not None:
+        df.plot.pie(
+            ax=ax,
+            y=share_column,
+            autopct=lambda p: f'{p:.0f}%' if p > percent_cap else '',
+            startangle=140,
+            legend=False,
+            colors=colors,
+            labels=None,
+            radius=radius
+        )
+    else:
+        df.plot.pie(
+            ax=ax,
+            y=share_column,
+            autopct=lambda p: f'{p:.0f}%' if p > percent_cap else '',
+            startangle=140,
+            legend=False,
+            colors=colors,
+            labels=None
+        )
+    ax.set_ylabel('')
+    ax.set_title(title)
+
+    # Adjust annotation font sizes
+    for text in ax.texts:
+        if text.get_text().endswith('%'):  # Check if the text is a percentage annotation
+            text.set_fontsize(annotation_size)
+
+    # Generate legend handles and labels manually
+    handles = [Patch(facecolor=color, label=label) for color, label in zip(colors, df[index])]
+    labels = list(df[index])
     return handles, labels

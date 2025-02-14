@@ -60,7 +60,7 @@ $if %SCENARIO% == Cournot $include "%READER_FILE_COURNOT%"
 $gdxIn %GDX_INPUT%
 
 * Loading parameters from the GDX file 
-$load    y, pDuration, gmap, pGenDatax, pFirmDatax, pDemandProfile, pDemandForecast, pVREgenProfileTech, pAvailability, pMinGen, pFuelPrice, pScalars
+$load    y, pDuration, gmap, pGenDatax, pStorageData, pFirmDatax, pDemandProfile, pDemandForecast, pVREgenProfileTech, pAvailability, pMinGen, pFuelPrice, pScalars
 
 $gdxIn
 
@@ -89,8 +89,6 @@ pFirmData(i,sFirmMap) = sum((z), pFirmDatax(i,z,sFirmMap));
 gstatusmap(g,gstatus) = pGenData(g,'status')=gstatIndex(gstatus);
 istatusmap(i,istatus) = pFirmData(i,'Fringe')=istatIndex(istatus);
 
-display istatusmap;
-
 
 
 committed(g) = gstatusmap(g,'Committed');
@@ -107,8 +105,10 @@ gimap(g,i) = sum((z,tech,f),gmap(g,i,z,tech,f));
 gzmap(g,z) = sum((i,tech,f),gmap(g,i,z,tech,f));
 gfmap(g,f) = sum((i,tech,z),gmap(g,i,z,tech,f));
 gtechmap(g,tech) = sum((i,z,f),gmap(g,i,z,tech,f));
+sto(g)  = YES$gtechmap(g,"STORAGE");
 fringefirms(i) = istatusmap(i,'Fringe');
 cournotfirms(i) = not fringefirms(i);
+
 
 
 * Calculating VarCost in $/MWh

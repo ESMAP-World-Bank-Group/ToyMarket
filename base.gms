@@ -29,11 +29,13 @@ gtechmap(g,tech)                     'Map generators to technologies'
 
 eg(g)                          'existing generators'
 committed(g)                          'committed generators'
+sto(g)                          'Storage generators'
 fringefirms(i)                       'Fringe generators'
 cournotfirms(i)                      'Cournot-behaving generators'
 
 sGenMap                        'Set of parameters for Generators tab'       /StYr, RetrYr, Capacity, Status, HeatRate, FOM, VOM, RampUpRate,
                                                                             RampDownRate, VRE/
+sStorageMap                    'Set of parameters for Generators tab'       /StorageDuration, Efficiency/
 sFirmMap                        'Set of parameters for Generators tab'      /Fringe, ContractLevel/
 
 
@@ -61,6 +63,7 @@ A(z,y,q,d,t)                       'Coefficient A of the inverse demand function
 B(z,y,q,d,t)                       'Coefficient B of the inverse demand function'
 pGenDatax(g,i,z,tech,f, sGenMap)              'Generation data'
 pGenData(g,sGenMap)              'Generation data'
+pStorageData(g,sStorageMap)       'Storage data'
 pFirmDatax(i,z,sFirmMap)            'Firm data'
 pFirmData(i,sFirmMap)            'Firm data'
 pDemandProfile(z,q,d,t)              'Demand profile'
@@ -98,7 +101,9 @@ vPrice(z,y,q,d,t)                'Price of the product in specific zone and time
 
 POSITIVE VARIABLES 
 vSupplyMarket(z,y,q,d,t)          'Total supply to the zone'
-vGenSupply(y,g,q,d,t)             'Supply of each generator' 
+vGenSupply(y,g,q,d,t)             'Supply of each generator'
+vStorageLevel(y,g,q,d,t)          'Storage level for storage generators'
+vStorageCharging(y,g,q,d,t)       'Storage charging for storage generators'
 
 ;
 
@@ -116,6 +121,11 @@ ePriceCap(z,y,q,d,t)             'Price cap'
 eMinGen(i,y,q)                   'Minimal level of energy availability, estimated per season'
 eRampUP(g,y,q,d,t)                'Ramp up constraint'
 eRampDOWN(g,y,q,d,t)               'Ramp down constraint'
+
+eStorageChargingLimit(y,g,q,d,t)     'Charging cannot be higher than installed capacity'
+eStorageCap(y,g,q,d,t)             'Stored energy cannot be higher than installed energy capacity'
+eStorageBalance(y,g,q,d,t)        'Storage balance equation'
+eStorageBalance1(y,g,q,d,t)       'Storage balance equation in the first hour'
 
 ;
 
@@ -161,6 +171,24 @@ eRampUP(g,y,q,d,t)$(ord(t)>1 AND pGenData(g,"RampUpRate") AND NOT pGenData(g,'VR
 eRampDOWN(g,y,q,d,t)$(ord(t)>1 AND pGenData(g,"RampDownRate") AND NOT pGenData(g,'VRE'))..
          vGenSupply(y,g,q,d,t-1) - vGenSupply(y,g,q,d,t) =L= (pCapacity(g,y)*pGenData(g,"RampUpRate"));
          
+    
+*---------------- STORAGE EQUATIONS ------------------------
+     
+* Add ramp up and down for storage injection
+* Storage inj should be limited with capacity
+eStorageChargingLimit(y,sto,q,d,t)..
+            vStorageCharging(y,sto,q,d,t) =L=  pCapacity(sto,y);
+            
+eStorageCap(y,sto,q,d,t)..
+            vStorageLevel(y,sto,q,d,t) =L= pStorageData(sto,'StorageDuration')*pCapacity(sto,y);
+
+eStorageBalance(y,sto,q,d,t)$(ord(t)>1)..
+            vStorageLevel(y,sto,q,d,t)  =E= vStorageLevel(y,sto,q,d,t-1) + vStorageCharging(y,sto,q,d,t)*pStorageData(sto,'Efficiency') - vGenSupply(y,sto,q,d,t);
+            
+eStorageBalance1(y,sto,q,d,t)$(ord(t)=1)..
+            vStorageLevel(y,sto,q,d,t)  =E= vStorageCharging(y,sto,q,d,t)*pStorageData(sto,'Efficiency') - vGenSupply(y,sto,q,d,t);
+
+* Add CSP specific equations: need to understand their specificities
 
 *---------------- FIXED DEMAND EQUATIONS ------------------------
 
@@ -191,6 +219,10 @@ eMinGen
 eRampUP
 eRampDOWN
 ePriceCap
+eStorageChargingLimit
+eStorageCap
+eStorageBalance
+eStorageBalance1
 / ;
 
 
@@ -204,4 +236,8 @@ eDemandSupply_FixedDemand
 eMinGen
 eRampUP
 eRampDOWN
+eStorageChargingLimit
+eStorageCap
+eStorageBalance
+eStorageBalance1
 / ;
