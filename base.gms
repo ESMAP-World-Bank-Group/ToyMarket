@@ -146,8 +146,8 @@ eVRE_Limit(g,y,q,d,t)$(pGenData(g,"VRE"))..
             vGenSupply(y,g,q,d,t) =E= pVREgenProfile(q,d,t,g)*pCapacity(g,y);
             
             
-eCF(g,y,q,d)$(NOT pGenData(g,"VRE") AND pAvailability(g,q))..
-            sum(t, vGenSupply(y,g,q,d,t) * pDuration(q,d,t)) =L= pAvailability(g,q) * sum(t, pDuration(q,d,t)) * pCapacity(g,y);
+eCF(g,y,q)$(NOT pGenData(g,"VRE") AND pAvailability(g,q))..
+            sum((d,t), vGenSupply(y,g,q,d,t) * pDuration(q,d,t)) =L= pAvailability(g,q) * sum((d,t), pDuration(q,d,t)) * pCapacity(g,y);
             
             
 eDemandSupply(y,z,q,d,t)..

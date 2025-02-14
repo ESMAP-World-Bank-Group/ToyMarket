@@ -129,6 +129,8 @@ def launch_market(scenario,
     additional_data = load_additional_data(scenario)
     scenario_cournot = prepare_data_for_cournot(results_perfect_competition, scenario_cournot, additional_data, folder=cwd)
 
+    scenario_cournot.to_csv(Path(cwd) / Path('input/scenario.csv'))
+
     path_args = ['--{} {}'.format(k, i) for k, i in scenario_cournot.items()]
 
     options = []

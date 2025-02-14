@@ -18,7 +18,16 @@ def input_checks(scenario):
         raise ValueError(f"Mismatch in firm definitions!\n"
                          f"Firms in pGenData but not in pFirmData: {missing_in_firm}\n")
 
-    print("Input check passed: All firms in pGenData are defined in pFirmData.")
+    pAvailability = pd.read_csv(scenario['pAvailability'], index_col=0)
+
+    # Ensure firm lists match exactly
+    missing_in_gendata = set(pAvailability.index.unique()) - set(pGenData.plants.unique())
+
+    if missing_in_firm:
+        raise ValueError(f"Mismatch in generator names in pAvailability!\n"
+                         f"Generators in pAvailability do not match names in pGendata: {missing_in_firm}\n")
+
+    print("Input check passed.")
 
 
 def extract_gdx(file, process_sets=False):
@@ -89,39 +98,40 @@ def process_outputs(epm_results, scenarios_rename=None, keys=None, folder=None, 
             epm_dict[k] = epm_dict[k].astype({'attribute': 'str'})
 
     if additional_processing:
-        folder = Path(folder) / Path('output')
-        if not folder.exists():
-            folder.mkdir()
+        folder_output = Path(folder) / Path('output')
+        if not folder_output.exists():
+            folder_output.mkdir()
 
         for k in keys:
             try:
-                epm_dict[k].to_csv(Path(folder) / Path(f'{k}.csv'), float_format='%.3f')
+                epm_dict[k].to_csv(Path(folder_output) / Path(f'{k}.csv'), float_format='%.3f')
             except Exception as e:
                 print(f"Skipping {k} due to error: {e}")
         epm_dict = process_additional_dataframe(epm_dict, folder=folder)
     return epm_dict
 
 
-def process_additional_dataframe(epm_results, folder=None):
+def process_additional_dataframe(epm_results, folder):
     """Postprocessing existing dataframes to obtain additional dataframes"""
+    # Energy information
     pEnergyByGenerator = epm_results['pGenSupply'].copy().groupby(['scenario', 'competition', 'year', 'generator'], observed=False)['value'].sum().reset_index()
     pEnergyByGeneratorAndSeason = epm_results['pGenSupply'].copy().groupby(['scenario', 'competition', 'year', 'season', 'generator'], observed=False)['value'].sum().reset_index()
     pEnergyByFirm = epm_results['pSupplyFirm'].copy().groupby(['scenario', 'competition', 'year', 'firm'], observed=False)['value'].sum().reset_index()
     pEnergyByFirmAndSeason = epm_results['pSupplyFirm'].copy().groupby(['scenario', 'competition', 'year', 'season', 'firm'], observed=False)['value'].sum().reset_index()
 
-    pEnergyByFuel = epm_results['pGenSupply'].merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
+    pEnergyByFuel = epm_results['pGenSupply'].copy().merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
     pEnergyByFuel = pEnergyByFuel.groupby(['scenario', 'competition', 'year', 'fuel'], observed=False)['value'].sum().reset_index()
 
-    pEnergyByFuelDispatch = epm_results['pGenSupply'].merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
+    pEnergyByFuelDispatch = epm_results['pGenSupply'].copy().merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
     pEnergyByFuelDispatch = pEnergyByFuelDispatch.groupby(['scenario', 'competition', 'year', 'season', 'day', 't', 'fuel'], observed=False)['value'].sum().reset_index()
 
-    pEnergyByTech = epm_results['pGenSupply'].merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
+    pEnergyByTech = epm_results['pGenSupply'].copy().merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
     pEnergyByTech = pEnergyByTech.groupby(['scenario', 'competition', 'year', 'tech'], observed=False)['value'].sum().reset_index()
 
-    pEnergyByTechDispatch = epm_results['pGenSupply'].merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
+    pEnergyByTechDispatch = epm_results['pGenSupply'].copy().merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
     pEnergyByTechDispatch = pEnergyByTechDispatch.groupby(['scenario', 'competition', 'year', 'season', 'day', 't', 'tech'], observed=False)['value'].sum().reset_index()
 
-    pGenSupplyWithCost = epm_results['pGenSupply'].merge(epm_results['pVarCost'], on=['scenario', 'generator', 'year'], how='left').rename(columns={'value_x': 'generation', 'value_y': 'VarCost'})
+    pGenSupplyWithCost = epm_results['pGenSupply'].copy().merge(epm_results['pVarCost'], on=['scenario', 'generator', 'year'], how='left').rename(columns={'value_x': 'generation', 'value_y': 'VarCost'})
     pGenSupplyWithCost = pGenSupplyWithCost.merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
     pGenSupplyWithCost = pGenSupplyWithCost.merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
     pGenSupplyWithCost = pGenSupplyWithCost.merge(epm_results['gimap'], on=['scenario', 'generator'], how='left')
@@ -129,6 +139,33 @@ def process_additional_dataframe(epm_results, folder=None):
         pGenSupplyWithCost = pGenSupplyWithCost.merge(epm_results['istatusmap'], on=['scenario', 'firm'], how='left')
     except Exception as e:
         print(f"Skipping pGenSupplyWithCost due to error: {e}")
+
+    # Plant information
+    for new_folder in folder.iterdir():
+        if (new_folder.is_dir()) & ('simulation' in str(new_folder) ):  # Ensure it's a directory
+            scenario_file = new_folder / 'input' / 'scenario.csv'
+            scenario = pd.read_csv(scenario_file)
+            break  # Stop after finding the first simulation
+
+    duration_file = scenario.set_index('paramNames').loc['pDuration'].values[0]
+    pDuration = pd.read_csv(duration_file, index_col=[0,1])
+    pDuration.index.names = ['season', 'day']
+    hours_in_season = pDuration.reset_index().drop(columns=['day']).groupby('season').sum().sum(
+        axis=1).reset_index().rename(columns={0: 'hours_in_season'})
+    pDuration_reshaped = pDuration.stack().reset_index().rename(columns={'level_2': 't', 0: 'nb_hours'})
+
+    pGenData = pd.read_csv(scenario.set_index('paramNames').loc['pGenData'].values[0]).rename(columns={'plants': 'generator'})
+
+    pPlantCapacityFactor = epm_results['pGenSupply'].copy()
+    pPlantCapacityFactor = pPlantCapacityFactor.merge(pDuration_reshaped, on=['season', 'day', 't'], how='left')
+    pPlantCapacityFactor.loc[:, 'generation'] = pPlantCapacityFactor.loc[:, 'value'] * pPlantCapacityFactor.loc[:, 'nb_hours']
+
+    pPlantCapacityFactor = pPlantCapacityFactor.groupby(['scenario', 'competition', 'generator', 'season'])[
+        'generation'].sum().reset_index()
+    pPlantCapacityFactor = pPlantCapacityFactor.merge(pGenData[['generator', 'Capacity']], on='generator', how='left')
+    pPlantCapacityFactor = pPlantCapacityFactor.merge(hours_in_season, on='season', how='left')
+    pPlantCapacityFactor.loc[:, 'capacity_factor'] = pPlantCapacityFactor.loc[:, 'generation'] / (pPlantCapacityFactor.loc[:, 'Capacity'] * pPlantCapacityFactor.loc[:, 'hours_in_season'])
+
 
 
     additional_df = {
@@ -140,7 +177,8 @@ def process_additional_dataframe(epm_results, folder=None):
         'pEnergyByFuelDispatch': pEnergyByFuelDispatch,
         'pEnergyByTech': pEnergyByTech,
         'pEnergyByTechDispatch': pEnergyByTechDispatch,
-        'pGenSupplyWithCost': pGenSupplyWithCost
+        'pGenSupplyWithCost': pGenSupplyWithCost,
+        'pPlantCapacityFactor': pPlantCapacityFactor
     }
 
     for key, item in additional_df.items():
@@ -148,7 +186,7 @@ def process_additional_dataframe(epm_results, folder=None):
 
     if folder is not None:
         for key, item in additional_df.items():
-            additional_df[key].to_csv(Path(folder) / Path(f'{key}.csv'), float_format='%.3f')
+            additional_df[key].to_csv(Path(folder)/  Path('output') / Path(f'{key}.csv'), float_format='%.3f')
 
     return epm_results
 
@@ -375,17 +413,3 @@ def adjust_demand(demand_forecast, demand_profile, duration, hours=None):
     return 0
 
 
-if __name__ == '__main__':
-    # pDemandProfile = pd.read_csv('input/pDemandProfile.csv', index_col=[0,1,2])
-    # pDemandForecast = pd.read_csv('input/pDemandForecast.csv', index_col=[0,1])
-    # pDuration = pd.read_csv('input/pDuration.csv', index_col=[0,1])
-    #
-    # pDemandData = adjust_demand(
-    #     pDemandForecast,
-    #     pDemandProfile,
-    #     pDuration
-    # )
-    folder = Path('output') / Path('simulations_run_20250211_165709')
-    epm_results = extract_simulation_folder(folder)
-    epm_results = process_outputs(epm_results)
-    epm_results = process_additional_dataframe(epm_results)
