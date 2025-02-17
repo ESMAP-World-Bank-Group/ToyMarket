@@ -25,6 +25,24 @@ def input_checks(scenario):
         raise ValueError(f"Mismatch in generator names in pAvailability!\n"
                          f"Generators in pAvailability do not match names in pGendata: {missing_in_gendata}\n")
 
+    pVREProfile = pd.read_csv(scenario['pVREgenProfile'], index_col=[0,1,2,3])
+    pDuration = pd.read_csv(scenario['pDuration'], index_col=[0,1])
+    zone = pVREProfile.index.get_level_values('zone')[0]
+    pVREProfile = pVREProfile.loc[pVREProfile.index.get_level_values('zone') == zone]
+    for fuel in pVREProfile.index.get_level_values('fuel').unique():
+        tmp = pVREProfile.loc[pVREProfile.index.get_level_values('fuel') == fuel, :].droplevel([0,1])
+        if set(tmp.index) != set(pDuration.index):
+            raise ValueError(f"VRE profile is not defined with the correct granularity. \n"
+                             f"Index of pVREprofile does not match index of pDuration\n")
+
+    pDemandProfile = pd.read_csv(scenario['pDemandProfile'], index_col=[0,1,2])
+    zone = pDemandProfile.index.get_level_values('zone')[0]
+    pDemandProfile = pDemandProfile.loc[pDemandProfile.index.get_level_values('zone') == zone]
+    tmp = pDemandProfile.droplevel([0])
+    if set(tmp.index) != set(pDuration.index):
+        raise ValueError(f"Demand profile is not defined with the correct granularity. \n"
+                         f"Index of pDemandProfile does not match index of pDuration\n")
+
     print("Input check passed.")
 
 
@@ -96,7 +114,7 @@ def process_outputs(epm_results, scenarios_rename=None, keys=None, folder=None, 
             epm_dict[k] = epm_dict[k].astype({'attribute': 'str'})
 
     if additional_processing:
-        folder_output = Path(folder) / Path('output')
+        folder_output = Path(folder) / Path('dataframes')
         if not folder_output.exists():
             folder_output.mkdir()
 
@@ -105,50 +123,67 @@ def process_outputs(epm_results, scenarios_rename=None, keys=None, folder=None, 
                 epm_dict[k].to_csv(Path(folder_output) / Path(f'{k}.csv'), float_format='%.3f')
             except Exception as e:
                 print(f"Skipping {k} due to error: {e}")
-        epm_dict = process_additional_dataframe(epm_dict, folder=folder)
+        epm_dict = process_additional_dataframe(epm_dict, folder=folder, scenarios_rename=scenarios_rename)
     return epm_dict
 
 
-def process_additional_dataframe(epm_results, folder):
+def process_additional_dataframe(epm_results, folder, scenarios_rename=None):
     """Postprocessing existing dataframes to obtain additional dataframes"""
+    scenario_df = []
     # Get scenario
     for new_folder in folder.iterdir():
-        if (new_folder.is_dir()) & ('simulation' in str(new_folder) ):  # Ensure it's a directory
+        if (new_folder.is_dir()) & ('simulation' in str(new_folder) ) & ('images' not in str(new_folder)) & ('dataframes' not in str(new_folder)):
             scenario_file = new_folder / 'input' / 'scenario.csv'
             scenario = pd.read_csv(scenario_file)
-            break  # Stop after finding the first simulation
+            scenario_name = str(new_folder).split('/')[-1]
+            scenario.loc[:, 'scenario'] = scenario_name
+            scenario_df.append(scenario)
 
-    duration_file = scenario.set_index('paramNames').loc['pDuration'].values[0]
-    pDuration = pd.read_csv(duration_file, index_col=[0,1])
-    pDuration.index.names = ['season', 'day']
-    hours_in_season = pDuration.reset_index().drop(columns=['day']).groupby('season').sum().sum(
+    # TODO: the best way to do that would probably be to extract dataframes from the gdx of inputs! TODO
+    scenario_df = pd.concat(scenario_df, axis=0)
+    pDuration_df = []
+    pGenData_df = []
+    for scenario in scenario_df.scenario.unique():
+        tmp = scenario_df.loc[scenario_df['scenario'] == scenario].drop(columns=['scenario'])
+        duration_file = tmp.set_index('paramNames').loc['pDuration'].values[0]
+        pDuration = pd.read_csv(duration_file, index_col=[0,1])
+        pDuration.index.names = ['season', 'day']
+        pDuration = pDuration.reset_index()
+        pDuration['scenario'] = scenario
+        pDuration_df.append(pDuration)
+        gendata_file = tmp.set_index('paramNames').loc['pGenData'].values[0]
+        pGenData = pd.read_csv(gendata_file).rename(columns={'plants': 'generator'})
+        pGenData = pGenData[['generator', 'Capacity']]
+        pGenData.loc[:, 'scenario'] = scenario
+        pGenData_df.append(pGenData)
+    pDuration_df = pd.concat(pDuration_df, axis=0)
+    pGenData_df = pd.concat(pGenData_df, axis=0)
+
+    if scenarios_rename is not None:
+        pDuration_df['scenario'] = pDuration_df['scenario'].replace(scenarios_rename)
+        pGenData_df['scenario'] = pGenData_df['scenario'].replace(scenarios_rename)
+
+    hours_in_season = pDuration_df.drop(columns=['day']).groupby(['season', 'scenario']).sum().sum(
         axis=1).reset_index().rename(columns={0: 'hours_in_season'})
-    pDuration_reshaped = pDuration.stack().reset_index().rename(columns={'level_2': 't', 0: 'nb_hours'})
+    pDuration_reshaped =pDuration_df.set_index(['season', 'day', 'scenario']).stack().reset_index().rename(columns={'level_3': 't', 0: 'nb_hours'})
 
     # Energy information
-    # pEnergyByGenerator = epm_results['pGenSupply'].copy().groupby(['scenario', 'competition', 'year', 'generator'], observed=False)['value'].sum().reset_index()
-
-    pEnergyByGenerator = epm_results['pGenSupply'].copy().merge(pDuration_reshaped, on=['season', 'day', 't'], how='left').assign(
+    pEnergyByGenerator = epm_results['pGenSupply'].copy().merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['value'] * df['nb_hours']
     ).groupby(['scenario', 'competition', 'year', 'generator'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
-    # pEnergyByGeneratorAndSeason = epm_results['pGenSupply'].copy().groupby(['scenario', 'competition', 'year', 'season', 'generator'], observed=False)['value'].sum().reset_index()
-    pEnergyByGeneratorAndSeason = epm_results['pGenSupply'].copy().merge(pDuration_reshaped, on=['season', 'day', 't'], how='left').assign(
+    pEnergyByGeneratorAndSeason = epm_results['pGenSupply'].copy().merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['value'] * df['nb_hours']
     ).groupby(['scenario', 'competition', 'year', 'season', 'generator'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
 
-    # pEnergyByFirm = epm_results['pSupplyFirm'].copy().groupby(['scenario', 'competition', 'year', 'firm'], observed=False)['value'].sum().reset_index()
-    # pEnergyByFirmAndSeason = epm_results['pSupplyFirm'].copy().groupby(['scenario', 'competition', 'year', 'season', 'firm'], observed=False)['value'].sum().reset_index()
-
-    pEnergyByFirm = epm_results['pSupplyFirm'].copy().merge(pDuration_reshaped, on=['season', 'day', 't'], how='left').assign(
+    pEnergyByFirm = epm_results['pSupplyFirm'].copy().merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['value'] * df['nb_hours']
     ).groupby(['scenario', 'competition', 'year', 'firm'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
-    pEnergyByFirmAndSeason = epm_results['pSupplyFirm'].copy().merge(pDuration_reshaped, on=['season', 'day', 't'], how='left').assign(
+    pEnergyByFirmAndSeason = epm_results['pSupplyFirm'].copy().merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['value'] * df['nb_hours']
     ).groupby(['scenario', 'competition', 'year', 'season', 'firm'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
 
     pEnergyByFuel = epm_results['pGenSupply'].copy().merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
-    # pEnergyByFuel = pEnergyByFuel.groupby(['scenario', 'competition', 'year', 'fuel'], observed=False)['value'].sum().reset_index()
-    pEnergyByFuel = pEnergyByFuel.merge(pDuration_reshaped, on=['season', 'day', 't'], how='left').assign(
+    pEnergyByFuel = pEnergyByFuel.merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['value'] * df['nb_hours']
     ).groupby(['scenario', 'competition', 'year', 'fuel'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
 
@@ -156,7 +191,9 @@ def process_additional_dataframe(epm_results, folder):
     pEnergyByFuelDispatch = pEnergyByFuelDispatch.groupby(['scenario', 'competition', 'year', 'season', 'day', 't', 'fuel'], observed=False)['value'].sum().reset_index()
 
     pEnergyByTech = epm_results['pGenSupply'].copy().merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
-    pEnergyByTech = pEnergyByTech.groupby(['scenario', 'competition', 'year', 'tech'], observed=False)['value'].sum().reset_index()
+    pEnergyByTech = pEnergyByTech.merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
+        generation=lambda df: df['value'] * df['nb_hours']
+    ).groupby(['scenario', 'competition', 'year', 'tech'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
 
     pEnergyByTechDispatch = epm_results['pGenSupply'].copy().merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
     pEnergyByTechDispatch = pEnergyByTechDispatch.groupby(['scenario', 'competition', 'year', 'season', 'day', 't', 'tech'], observed=False)['value'].sum().reset_index()
@@ -170,21 +207,26 @@ def process_additional_dataframe(epm_results, folder):
     except Exception as e:
         print(f"Skipping pEnergyFullDispatch due to error: {e}")
 
-    pEnergyFull = pEnergyFullDispatch.merge(pDuration_reshaped, on=['season', 'day', 't'], how='left').assign(
+    pEnergyFull = pEnergyFullDispatch.merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['generation'] * df['nb_hours']
     ).groupby(['scenario', 'competition', 'year', 'fuel', 'tech', 'firm', 'firmstatus'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
 
-    pGenData = pd.read_csv(scenario.set_index('paramNames').loc['pGenData'].values[0]).rename(columns={'plants': 'generator'})
-
     pPlantCapacityFactor = epm_results['pGenSupply'].copy()
-    pPlantCapacityFactor = pPlantCapacityFactor.merge(pDuration_reshaped, on=['season', 'day', 't'], how='left')
+    pPlantCapacityFactor = pPlantCapacityFactor.merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left')
     pPlantCapacityFactor.loc[:, 'generation'] = pPlantCapacityFactor.loc[:, 'value'] * pPlantCapacityFactor.loc[:, 'nb_hours']
 
     pPlantCapacityFactor = pPlantCapacityFactor.groupby(['scenario', 'competition', 'generator', 'season'])[
         'generation'].sum().reset_index()
-    pPlantCapacityFactor = pPlantCapacityFactor.merge(pGenData[['generator', 'Capacity']], on='generator', how='left')
-    pPlantCapacityFactor = pPlantCapacityFactor.merge(hours_in_season, on='season', how='left')
+    # pPlantCapacityFactor = pPlantCapacityFactor.merge(pGenData[['generator', 'Capacity']], on='generator', how='left')
+    pPlantCapacityFactor = pPlantCapacityFactor.merge(pGenData_df, on=['generator', 'scenario'], how='left')
+    pPlantCapacityFactor = pPlantCapacityFactor.merge(hours_in_season, on=['season', 'scenario'], how='left')
     pPlantCapacityFactor.loc[:, 'capacity_factor'] = pPlantCapacityFactor.loc[:, 'generation'] / (pPlantCapacityFactor.loc[:, 'Capacity'] * pPlantCapacityFactor.loc[:, 'hours_in_season'])
+
+    # Demand data
+    pDemandTotal = epm_results['pDemand'].copy().merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
+        demand=lambda df: df['value'] * df['nb_hours']
+    ).groupby(['scenario', 'competition', 'year'], observed=False)['demand'].sum().reset_index().rename(columns={'demand': 'value'})
+
 
     additional_df = {
         'pEnergyByGenerator': pEnergyByGenerator,
@@ -197,7 +239,8 @@ def process_additional_dataframe(epm_results, folder):
         'pEnergyByTechDispatch': pEnergyByTechDispatch,
         'pEnergyFullDispatch': pEnergyFullDispatch,
         'pEnergyFull': pEnergyFull,
-        'pPlantCapacityFactor': pPlantCapacityFactor
+        'pPlantCapacityFactor': pPlantCapacityFactor,
+        'pDemandTotal': pDemandTotal
     }
 
     for key, item in additional_df.items():
@@ -205,7 +248,7 @@ def process_additional_dataframe(epm_results, folder):
 
     if folder is not None:
         for key, item in additional_df.items():
-            additional_df[key].to_csv(Path(folder)/  Path('output') / Path(f'{key}.csv'), float_format='%.3f')
+            additional_df[key].to_csv(Path(folder)/  Path('dataframes') / Path(f'{key}.csv'), float_format='%.3f')
 
     return epm_results
 

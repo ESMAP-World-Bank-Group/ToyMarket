@@ -16,7 +16,7 @@ $onEmbeddedCode Connect:
         
 - CSVReader:
     trace: 0
-    file: input/pDuration.csv
+    file: input/settings/pDuration.csv
     name: pDuration
     header: [1]
     indexColumns: [1, 2]
@@ -44,7 +44,7 @@ $onEmbeddedCode Connect:
     
 - CSVReader:
     trace: 0
-    file: input/pStorageData.csv
+    file: input/gendata/pStorageData.csv
     name: pStorageData
     indexSubstitutions: {.nan: ""}
     valueSubstitutions: {0: .nan}
@@ -63,7 +63,7 @@ $onEmbeddedCode Connect:
     
 - CSVReader:
     trace: 0
-    file: input/pDemandProfile.csv
+    file: input/demand/pDemandProfile.csv
     name: pDemandProfile
     indexSubstitutions: {.nan: ""}
     valueSubstitutions: {0: .nan}
@@ -73,7 +73,7 @@ $onEmbeddedCode Connect:
     
 - CSVReader:
     trace: 0
-    file: input/pDemandForecast.csv
+    file: input/demand/pDemandForecast.csv
     name: pDemandForecast
     indexSubstitutions: {.nan: ""}
     valueSubstitutions: {0: .nan}
@@ -83,7 +83,7 @@ $onEmbeddedCode Connect:
     
 - CSVReader:
     trace: 0
-    file: input/pVREgenProfile.csv
+    file: input/availability/pVREProfile.csv
     name: pVREgenProfileTech
     indexColumns: [1,2,3,4]
     header: [1]
@@ -92,7 +92,7 @@ $onEmbeddedCode Connect:
     
 - CSVReader:
     trace: 0
-    file: input/pAvailability.csv
+    file: input/availability/pAvailability.csv
     name: pAvailability
     indexColumns: [1]
     header: [1]

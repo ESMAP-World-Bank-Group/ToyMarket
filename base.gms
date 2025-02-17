@@ -136,7 +136,7 @@ eObjFunCournot..
             vObjVal =E=
             sum((y,z,q,d,t), pWeightYear(y) * pRR(y) * pDuration(q,d,t) * (A(z,y,q,d,t)-0.5*B(z,y,q,d,t)*vSupplyMarket(z,y,q,d,t))*vSupplyMarket(z,y,q,d,t)) 
             - sum((y,g,q,d,t), pWeightYear(y) * pRR(y) * pDuration(q,d,t) * pVarCost(g,y)*vGenSupply(y,g,q,d,t)) 
-            - sum((cournotfirms,z,y,q,d,t), pWeightYear(y) * pRR(y) * pDuration(q,d,t) * 0.5*B(z,y,q,d,t)*sqr((sum(g$(gzmap(g,z) AND gimap(g,cournotfirms)), vGenSupply(y,g,q,d,t)) - pContractVolume(cournotfirms,z,y,q,d,t))));
+            - sum((cournotfirms,z,y,q,d,t), pWeightYear(y) * pRR(y) * pDuration(q,d,t) * 0.5*B(z,y,q,d,t)*sqr((sum(g$(gzmap(g,z) AND gimap(g,cournotfirms)), vGenSupply(y,g,q,d,t) - vStorageCharging(y,g,q,d,t)$(sto(g))) - pContractVolume(cournotfirms,z,y,q,d,t))));
                    
 
 eJointCap(g,y,q,d,t)..
@@ -151,7 +151,7 @@ eCF(g,y,q)$(NOT pGenData(g,"VRE") AND pAvailability(g,q))..
             
             
 eDemandSupply(y,z,q,d,t)..
-            sum(g$(gzmap(g,z)), vGenSupply(y,g,q,d,t)) - vSupplyMarket(z,y,q,d,t) =E= 0 ;
+            sum(g$(gzmap(g,z)), vGenSupply(y,g,q,d,t)) - sum(g$(gzmap(g,z) AND sto(g)), vStorageCharging(y,g,q,d,t)) - vSupplyMarket(z,y,q,d,t) =E= 0 ;
 
 ePrice(z,y,q,d,t)..
             vPrice(z,y,q,d,t) =E= A(z,y,q,d,t)-B(z,y,q,d,t)*(vSupplyMarket(z,y,q,d,t)) ;
@@ -201,7 +201,7 @@ eObjFunFixedDemand..
 
 eDemandSupply_FixedDemand(y,z,q,d,t)..
             sum(g$(gzmap(g,z)), vGenSupply(y,g,q,d,t))
-*            - sum(g$(gzmap(g,z) AND sto(g) AND pr('Energy')), vStorageCharging(y,w,g,t))
+            - sum(g$(gzmap(g,z) AND sto(g)), vStorageCharging(y,g,q,d,t))
 *            - sum(z2$sTopology(z,z2), vPowerFlow(pr,z,z2,y,w,t))
 *            + sum(z2$sTopology(z,z2), vPowerFlow(pr,z2,z,y,w,t))*0.999
             - pFixedDemand(z,y,q,d,t)=E= 0 ;
