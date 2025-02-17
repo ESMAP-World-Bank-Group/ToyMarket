@@ -103,7 +103,8 @@ def standardize_names(dict_df, key, mapping, column='fuel', sum=True):
 def process_for_labels(epm_dict, dict_specs):
     if dict_specs is not None:
         standardize_names(epm_dict, 'pEnergyByFuel', dict_specs['fuel_mapping'], column='fuel')
-        standardize_names(epm_dict, 'pGenSupplyWithCost', dict_specs['fuel_mapping'], column='fuel', sum=False)
+        standardize_names(epm_dict, 'pEnergyFullDispatch', dict_specs['fuel_mapping'], column='fuel', sum=False)
+        standardize_names(epm_dict, 'pEnergyFull', dict_specs['fuel_mapping'], column='fuel', sum=False)
         standardize_names(epm_dict, 'pEnergyByTech', dict_specs['tech_mapping'], column='tech')
         standardize_names(epm_dict, 'pEnergyByFuelDispatch', dict_specs['fuel_mapping'], column='fuel')
     return epm_dict
@@ -274,7 +275,10 @@ def stacked_bar_subplot(df, column_group, filename, dict_colors=None, year_ini=N
         width_ratios = [1] * n_columns
     fig, axes = plt.subplots(n_rows, n_columns, figsize=(10, 6 * n_rows), sharey='all',
                              gridspec_kw={'width_ratios': width_ratios})
-    axes = np.array(axes).flatten()
+    if n_rows * n_columns == 1:  # If only one subplot, `axes` is not an array
+        axes = [axes]  # Convert to list to maintain indexing consistency
+    else:
+        axes = np.array(axes).flatten()  # Ensure it's always a 1D array
 
     handles, labels = None, None
     for k, key in enumerate(list_keys):
@@ -346,7 +350,7 @@ def stacked_bar_subplot(df, column_group, filename, dict_colors=None, year_ini=N
                 handles, labels = ax.get_legend_handles_labels()
                 labels = [l.replace('_', ' ') for l in labels]
                 ax.yaxis.set_major_formatter(plt.FuncFormatter(format_y))
-            if k > 0:
+            if k % n_columns != 0:
                 ax.set_ylabel('')
                 ax.tick_params(axis='y', which='both', left=False, labelleft=False)
             ax.get_legend().remove()
