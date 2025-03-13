@@ -15,6 +15,7 @@ PARAMETER
         pSupplyFirmTotal(s,i,z,y,q,d,t)            ' Total firm supply by scenario, period, market player, year, and week'
         pSupplyFirmAnnual(s,i,z,y,q,d,t)                ' Annual firm supply by scenario, period, and market player'
         pDemand(s,z,y,q,d,t)                    'Demand under the Cournot scenario'
+        pDispatch(s,z,y,q,d,t,*)                'Dispatch information, including unserved demand.'
              
 ;
 
@@ -36,9 +37,15 @@ pSupplyFirm("%SCENARIO%",i,z,y,q,d,t) = Sum((g)$(gimap(g,i) and gzmap(g,z)), vGe
 pGenSupply("%SCENARIO%",y,g,q,d,t) = vGenSupply.L(y,g,q,d,t);
 
 $ifThenI %SCENARIO% == Cournot
-    pDemand("%SCENARIO%",z,y,q,d,t) = vSupplyMarket.L(z,y,q,d,t)
+    pDemand("%SCENARIO%",z,y,q,d,t) = vSupplyMarket.L(z,y,q,d,t);
 $else
-    pDemand("%SCENARIO%",z,y,q,d,t) = pFixedDemand(z,y,q,d,t)
+    pDemand("%SCENARIO%",z,y,q,d,t) = pFixedDemand(z,y,q,d,t) - vUnmetDemand.L(z,y,q,d,t);
+$endIf
+
+pDispatch("%SCENARIO%",z,y,q,d,t,'Generation') = sum(gzmap(g,z),pGenSupply("%SCENARIO%",y,g,q,d,t));
+pDispatch("%SCENARIO%",z,y,q,d,t,'Demand') = pDemand("%SCENARIO%",z,y,q,d,t);
+$ifThenI %SCENARIO% == Least-cost
+    pDispatch("%SCENARIO%",z,y,q,d,t,'Unmet demand') = vUnmetDemand.L(z,y,q,d,t);
 $endIf
 
 

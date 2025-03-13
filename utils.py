@@ -82,7 +82,7 @@ def process_outputs(epm_results, scenarios_rename=None, keys=None, folder=None, 
                       'z': 'zone', 'g': 'generator', 'f': 'fuel', 'q': 'season', 'd': 'day', 't': 't', 'i': 'firm',
                       'istatus': 'firmstatus'}
     if keys is None:
-        keys = ['pPrice', 'pDemand', 'pSupplyFirm', 'pGenSupply', 'pSupplyFirm', 'gfmap', 'gimap', 'gtechmap',
+        keys = ['pPrice', 'pDemand', 'pSupplyFirm', 'pGenSupply', 'pDispatch', 'pSupplyFirm', 'gfmap', 'gimap', 'gtechmap',
                 'pVarCost', 'pFirmData', 'istatusmap']
     epm_dict = {k: i.rename(columns=rename_columns) for k, i in epm_results.items() if
                 k in keys and k in epm_results.keys()}
@@ -135,6 +135,33 @@ def process_outputs(epm_results, scenarios_rename=None, keys=None, folder=None, 
                 print(f"Skipping {k} due to error: {e}")
         epm_dict = process_additional_dataframe(epm_dict, folder=folder, scenarios_rename=scenarios_rename)
     return epm_dict
+
+
+def filter_dataframe(df, conditions):
+    """
+    Filters a DataFrame based on a dictionary of conditions.
+
+    Parameters:
+    - df (pd.DataFrame): The DataFrame to be filtered.
+    - conditions (dict): Dictionary specifying filtering conditions.
+      - Keys: Column names in the DataFrame.
+      - Values: Either a single value (exact match) or a list of values (keeps only matching rows).
+
+    Returns:
+    - pd.DataFrame: The filtered DataFrame.
+
+    Example Usage:
+    ```
+    conditions = {'scenario': 'Baseline', 'year': 2050}
+    filtered_df = filter_dataframe(df, conditions)
+    ```
+    """
+    for col, value in conditions.items():
+        if isinstance(value, list):
+            df = df[df[col].isin(value)]
+        else:
+            df = df[df[col] == value]
+    return df
 
 
 def process_additional_dataframe(epm_results, folder, scenarios_rename=None):

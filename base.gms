@@ -101,6 +101,7 @@ vPrice(z,y,q,d,t)                'Price of the product in specific zone and time
 
 POSITIVE VARIABLES 
 vSupplyMarket(z,y,q,d,t)          'Total supply to the zone'
+vUnmetDemand(z,y,q,d,t)           'Unmet demand under the fixed demand setting'
 vGenSupply(y,g,q,d,t)             'Supply of each generator'
 vStorageLevel(y,g,q,d,t)          'Storage level for storage generators'
 vStorageCharging(y,g,q,d,t)       'Storage charging for storage generators'
@@ -196,6 +197,7 @@ eStorageBalance1(y,sto,q,d,t)$(ord(t)=1)..
 eObjFunFixedDemand..
             vObjVal =E=
             - sum((y,g,q,d,t), pWeightYear(y) * pRR(y) * pDuration(q,d,t) * pVarCost(g,y)*vGenSupply(y,g,q,d,t))
+            - pScalars('VOLL') * sum((z,y,q,d,t),pWeightYear(y) * pRR(y) * pDuration(q,d,t) * vUnmetDemand(z,y,q,d,t))
             ;
             
 
@@ -204,7 +206,7 @@ eDemandSupply_FixedDemand(y,z,q,d,t)..
             - sum(g$(gzmap(g,z) AND sto(g)), vStorageCharging(y,g,q,d,t))
 *            - sum(z2$sTopology(z,z2), vPowerFlow(pr,z,z2,y,w,t))
 *            + sum(z2$sTopology(z,z2), vPowerFlow(pr,z2,z,y,w,t))*0.999
-            - pFixedDemand(z,y,q,d,t)=E= 0 ;
+            + vUnmetDemand(z,y,q,d,t) - pFixedDemand(z,y,q,d,t)=E= 0 ;
 
 
 model Cournot

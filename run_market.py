@@ -253,7 +253,8 @@ def launch_market_multiple_scenarios(scenario_baseline='scenario_baseline.csv',
 if __name__ == '__main__':
     launch_market_multiple_scenarios(scenario_baseline='input/scenario_baseline.csv',
                                      scenarios_specification='input/scenario_spec.csv',
-                                     selected_scenarios=['baseline', 'Contract1', 'Contract0p8', 'EskomDifferentiate', 'CoalDifferentiate', 'LowAvailability', 'FullDifferentiate'],
-                                     # selected_scenarios=['FullDifferentiate'],
+                                     # selected_scenarios=['baseline', 'Contract1', 'Contract0p8', 'EskomDifferentiate', 'CoalDifferentiate', 'LowAvailability', 'FullDifferentiate'],
+                                     # selected_scenarios=['baseline', 'Contract1', 'FullDifferentiate', 'FullDifferentiateNoContract'],
+                                     selected_scenarios=['baseline'],
                                      cpu=1, path_gams=None,
                                      path_engine_file=None)
