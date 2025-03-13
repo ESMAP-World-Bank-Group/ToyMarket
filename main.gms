@@ -184,7 +184,7 @@ $endIf
 $include %REPORT_FILE%
 
 $ifThenI %SCENARIO% == Least-cost
-    execute_unload 'ResultsPerfectCompetition.gdx' pPrice, pSupplyFirm, pSupplyMarket, pDemand, pFixedDemand, pGenSupply, pDispatch;
+    execute_unload 'ResultsPerfectCompetition.gdx' gimap, pPrice, pSupplyFirm, pSupplyMarket, pDemand, pFixedDemand, pGenSupply, pDispatch;
 $endIf
 
 $ifThenI %SCENARIO% == Cournot

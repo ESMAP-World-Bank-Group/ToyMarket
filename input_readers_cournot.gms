@@ -1,42 +1,9 @@
 
-$ifThenI.READER "%READER%" == CONNECT_CSV
-$log ### reading using Connect and CSV Input
 
-$onEmbeddedCode Connect:
+$if not set A $set A input/A.csv
+$if not set B $set B input/B.csv
+$if not set pContractVolume $set pContractVolume input/pContractVolume.csv
 
-    
-- CSVReader:
-    trace: 0
-    file: input/A.csv
-    name: A
-    indexColumns: [1,2,3,4,5]
-    valueColumns: [6]
-    type: par
-    
-- CSVReader:
-    trace: 0
-    file: input/B.csv
-    name: B
-    indexColumns: [1,2,3,4,5]
-    valueColumns: [6]
-    type: par
-    
-
-- CSVReader:
-    trace: 0
-    file: input/pContractVolume.csv
-    name: pContractVolume
-    indexColumns: [1,2,3,4,5,6]
-    valueColumns: [7]
-    type: par
-    
-
-- GDXWriter:
-    file: %GDX_INPUT%_Cournot.gdx
-    symbols: all
-$offEmbeddedCode
-
-$elseIfI.READER %READER% == CONNECT_CSV_PYTHON
 $log ### reading using Connect and CSV Input with Python
 
 $onEmbeddedCode Connect:
@@ -72,6 +39,3 @@ $onEmbeddedCode Connect:
     symbols: all
 $offEmbeddedCode
 
-$else.READER
-$abort 'No valid READER specified. Allowed are GDXXRW and CONNECT.'
-$endif.READER

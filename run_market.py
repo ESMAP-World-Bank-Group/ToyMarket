@@ -127,7 +127,7 @@ def launch_market(scenario,
     # TODO: extract_perfect_competition(path) with path = cwd, ResultsPerfectCompetition.gdx for gdx
     results_perfect_competition = extract_perfect_competition(cwd)
     additional_data = load_additional_data(scenario)
-    scenario_cournot = prepare_data_for_cournot(results_perfect_competition, scenario_cournot, additional_data, folder=cwd)
+    scenario_cournot = prepare_data_for_cournot(results_perfect_competition, scenario_cournot, additional_data, folder=cwd, contract='firm')
 
     scenario_cournot.to_csv(Path(cwd) / Path('input/scenario.csv'))
 
@@ -254,7 +254,7 @@ if __name__ == '__main__':
     launch_market_multiple_scenarios(scenario_baseline='input/scenario_baseline.csv',
                                      scenarios_specification='input/scenario_spec.csv',
                                      # selected_scenarios=['baseline', 'Contract1', 'Contract0p8', 'EskomDifferentiate', 'CoalDifferentiate', 'LowAvailability', 'FullDifferentiate'],
-                                     # selected_scenarios=['baseline', 'Contract1', 'FullDifferentiate', 'FullDifferentiateNoContract'],
-                                     selected_scenarios=['baseline'],
+                                     selected_scenarios=['baseline', 'Contract1', 'FullDifferentiate', 'FullDifferentiateNoContract'],
+                                     # selected_scenarios=['baseline'],
                                      cpu=1, path_gams=None,
                                      path_engine_file=None)

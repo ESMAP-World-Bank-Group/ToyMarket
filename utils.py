@@ -294,7 +294,7 @@ def extract_perfect_competition(folder, file='ResultsPerfectCompetition.gdx'):
     """Processing results from perfect competition."""
     if file in os.listdir(folder):
         file = Path(folder) / Path(file)
-        epm_results = extract_gdx(file=file)
+        epm_results = extract_gdx(file=file, process_sets=True)
         epm_dict = process_outputs(epm_results, additional_processing=False)
         epm_dict['pPrice'] = (epm_dict['pPrice'].loc[epm_dict['pPrice'].competition == 'Least-cost']).drop(
             columns=['competition'])
@@ -398,13 +398,69 @@ def load_additional_data(scenario):
     additional_data['pFirmData'] = pFirmData
     return additional_data
 
-def prepare_data_for_cournot(d, scenario, additional_data, folder):
+def prepare_data_for_cournot(d, scenario, additional_data, folder, contract):
+    """
+    Prepares data for a Cournot competition model by estimating demand parameters
+    and determining contract levels at either the firm or plant level.
 
+    Parameters:
+    -----------
+    d : dict
+        Dictionary containing input datasets as Pandas DataFrames:
+        - 'pDemand': Demand data indexed by ['zone', 'year', 'season', 'day', 't'].
+        - 'pPrice': Price data indexed by ['zone', 'year', 'season', 'day', 't'].
+        - 'pSupplyFirm' (if contract='firm'): Supply data at the firm level, indexed by ['firm', 'zone', 'year', 'season', 'day', 't'].
+        - 'pGenSupply' (if contract='plant'): Supply data at the generator level, indexed by ['generator', 'year', 'season', 'day', 't'].
+        - 'gimap': Mapping between generators and firms.
+
+    scenario : dict
+        Dictionary containing scenario-specific information that will be updated.
+
+    additional_data : dict
+        Additional data needed for demand and contracting estimation:
+        - 'elasticity': Demand elasticity values.
+        - 'pFirmData': Data specifying firm-level contract information.
+
+    folder : str
+        Path to the folder where intermediate or output data may be stored.
+
+    contract : str
+        Specifies the contract level, must be either:
+        - 'firm': Contracting is handled at the firm level.
+        - 'plant': Contracting is handled at the plant level.
+
+    Returns:
+    --------
+    scenario : dict
+        Updated scenario dictionary with estimated demand parameters and contract allocations.
+
+    Raises:
+    -------
+    AssertionError:
+        If the `contract` parameter is not 'firm' or 'plant'.
+
+    Notes:
+    ------
+    - The function first estimates demand slope and intercept using `estimate_demand_slope_intercept`.
+    - If contracting is at the firm level, supply data is processed from 'pSupplyFirm'.
+    - If contracting is at the plant level, supply data is processed from 'pGenSupply'
+      and mapped using 'gimap'.
+    - Contracting at the plant level is actually only relevant if the level of contracting differs across plants belong to the same firm.
+    If the level of contracting is the same, then working directly at the firm level will yield the same results.
+    """
+    assert contract in ['firm', 'plant'], 'Method used to define contract level is not yet implemented.'
     demand = d['pDemand'].set_index([ 'zone', 'year', 'season', 'day', 't'])
     price = d['pPrice'].set_index([ 'zone', 'year', 'season', 'day', 't'])
     scenario = estimate_demand_slope_intercept(demand, price, additional_data['elasticity'], folder, scenario)
-    supplyfirm = d['pSupplyFirm'].drop(columns=['competition']).set_index(['firm', 'zone', 'year', 'season', 'day', 't'])
-    scenario = estimate_hourly_contracting(supplyfirm, additional_data['pFirmData'], folder, scenario)
+    if contract == 'firm':  # contract level is defined at the firm level
+        supplyfirm = d['pSupplyFirm'].drop(columns=['competition']).set_index(['firm', 'zone', 'year', 'season', 'day', 't'])
+        scenario = estimate_hourly_contracting(supplyfirm, additional_data['pFirmData'], folder, scenario)
+    else:  # contract level is defined at the plant level
+        contract_data = d['gimap'].merge(additional_data['pFirmData'].reset_index()[['firm', 'value']], on='firm', how='left').fillna(0).drop(columns=['firm']).set_index(['generator'])
+        contract_data = contract_data[contract_data['value'] > 0]
+        gensupply = d['pGenSupply'].drop(columns=['competition']).set_index(['generator', 'year', 'season', 'day', 't'])
+        scenario = estimate_hourly_contracting(gensupply, contract_data, folder, scenario)
+
     return scenario
 
 def get_duration_curve(value_df, duration_df):
