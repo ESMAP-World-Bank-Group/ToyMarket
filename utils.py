@@ -270,11 +270,13 @@ def extract_perfect_competition(folder, file='ResultsPerfectCompetition.gdx'):
     return epm_dict
 
 
-def extract_simulation_folder(folder):
+def extract_simulation_folder(results_folder):
+    required_files = {'ResultsPerfectCompetition.gdx', 'ResultsCournot.gdx', 'MarketModelInput_common.gdx'}
     dict_df = {}
-    for scenario in [i for i in os.listdir(folder) if os.path.isdir(os.path.join(folder, i))]:
-        if 'simulation' in scenario:
-            dict_df.update({scenario: extract_scenario_folder(Path(folder) / Path(scenario))})
+    for scenario in [i for i in os.listdir(results_folder) if os.path.isdir(os.path.join(results_folder, i))]:
+        scenario_files = set(os.listdir(Path(results_folder) / Path(scenario)))
+        if required_files.issubset(scenario_files):
+            dict_df.update({scenario: extract_scenario_folder(Path(results_folder) / Path(scenario))})
 
     inverted_dict = {
         k: {outer: inner[k] for outer, inner in dict_df.items() if k in inner}
@@ -282,6 +284,18 @@ def extract_simulation_folder(folder):
     }
 
     inverted_dict = {k: pd.concat(v, names=['scenario']).reset_index('scenario') for k, v in inverted_dict.items()}
+
+    # dict_df = {}
+    # for scenario in [i for i in os.listdir(folder) if os.path.isdir(os.path.join(folder, i))]:
+    #     if 'simulation' in scenario:
+    #         dict_df.update({scenario: extract_scenario_folder(Path(folder) / Path(scenario))})
+    #
+    # inverted_dict = {
+    #     k: {outer: inner[k] for outer, inner in dict_df.items() if k in inner}
+    #     for k in {key for inner in dict_df.values() for key in inner}
+    # }
+    #
+    # inverted_dict = {k: pd.concat(v, names=['scenario']).reset_index('scenario') for k, v in inverted_dict.items()}
 
     return inverted_dict
 

@@ -7,7 +7,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 from requests.auth import HTTPBasicAuth
 import gams.engine
 from requests import post, get
-
+import re
 from multiprocessing import Pool
 
 from utils import *
@@ -92,7 +92,7 @@ def launch_market(scenario,
     if scenario_name == '':
         scenario_name = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
-    folder = 'simulation_{}'.format(scenario_name)
+    folder = '{}'.format(scenario_name)
     if not os.path.exists(folder):
         os.mkdir(folder)
     cwd = os.path.join(os.getcwd(), folder)
@@ -232,12 +232,28 @@ def launch_market_multiple_scenarios(scenario_baseline='scenario_baseline.csv',
 
     if path_engine_file:
         pd.DataFrame(result).to_csv('tokens_simulation.csv', index=False)
+
+    # Collect scenario.csv files and merge them
+    scenario_files = [os.path.join(scenario, 'input/scenario.csv') for scenario in s.keys()]
+    scenario_data = []
+
+    for scenario, file in zip(s.keys(), scenario_files):
+        if os.path.exists(file):
+            df = pd.read_csv(file)
+            df = df.rename(columns={'file': scenario}).set_index('paramNames')
+            scenario_data.append(df)
+
+    if scenario_data:
+        final_df = pd.concat(scenario_data, axis=1)
+        final_df.to_csv(os.path.join('simulation_scenarios.csv'), index=False)
+
     return folder, result
 
 
 if __name__ == '__main__':
     launch_market_multiple_scenarios(scenario_baseline='input/scenario_baseline.csv',
                                      scenarios_specification='input/scenario_spec.csv',
-                                     selected_scenarios=['StressTest'],
+                                     selected_scenarios=['baseline', 'Contract1', 'Contract0p8', 'EskomDifferentiate', 'CoalDifferentiate', 'LowAvailability', 'FullDifferentiate'],
+                                     # selected_scenarios=['FullDifferentiate'],
                                      cpu=1, path_gams=None,
                                      path_engine_file=None)
