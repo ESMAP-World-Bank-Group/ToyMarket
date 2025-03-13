@@ -7,6 +7,7 @@ from matplotlib.patches import Patch
 from itertools import cycle
 import plotly.express as px
 import plotly.graph_objects as go
+import seaborn as sns
 # import ipywidgets as widgets
 # from IPython.display import display
 
@@ -15,6 +16,7 @@ NAME_COLUMNS = {
     'pGenSupply': 'generator',
     'pEnergyByTechDispatch': 'tech',
     'pEnergyByFuelDispatch': 'fuel',
+    'pEnergyFullDispatch': 'fuel_firm',
     'pDemand': 'demand',
     'pDispatch': 'attribute',
     'pCostSummary': 'attribute',
@@ -22,7 +24,7 @@ NAME_COLUMNS = {
     'pEnergyByFuel': 'fuel'
 }
 
-COLORS = 'static/colors.csv'
+COLORS = 'static/colors_SA.csv'
 FUELS = 'static/fuels.csv'
 TECHS = 'static/technologies.csv'
 
@@ -670,6 +672,11 @@ def clean_dataframe(df, zone, year, scenario, competition, column_stacked=None, 
 
     if column_stacked is not None:
         df = (df.groupby(['season', 'day', 't', column_stacked], observed=False).sum().reset_index())
+        # if df.dtypes['t'] == 'object':  # column t is a string, and should be reordered to match hourly order
+        #
+        #     df['t_numeric'] = df['t'].str.extract(r'(\d+)').astype(int)
+        #     df = df.sort_values(by=['season', 'day', 't_numeric'])
+        #     df = df.drop(columns=['t_numeric'])  # Remove helper column if not needed
 
     if select_time is not None:
         df, temp = select_time_period(df, select_time)
@@ -684,7 +691,7 @@ def clean_dataframe(df, zone, year, scenario, competition, column_stacked=None, 
 
 
 def make_complete_fuel_dispatch_plot(dfs_area, dfs_line, dict_colors, zone, year, scenario, competition,
-                                     filename=None, fuel_grouping=None, select_time=None, reorder_dispatch=None,
+                                     name_columns_spec=None, filename=None, fuel_grouping=None, select_time=None, reorder_dispatch=None,
                                      legend_loc='bottom', figsize=(10, 6), interactive=False):
     """
     Generates and saves a fuel dispatch plot, including only generation plants.
@@ -735,6 +742,8 @@ def make_complete_fuel_dispatch_plot(dfs_area, dfs_line, dict_colors, zone, year
     """
     # TODO: Add ax2 to show other data. For example prices would be interesting to show in the same plot.
 
+    if name_columns_spec is not None:
+        NAME_COLUMNS.update(name_columns_spec)
     tmp_concat_area = []
     for key in dfs_area:
         df = dfs_area[key]
@@ -757,8 +766,15 @@ def make_complete_fuel_dispatch_plot(dfs_area, dfs_line, dict_colors, zone, year
     df_tot_area = df_tot_area.droplevel(0, axis=1)
     df_tot_area = remove_na_values(df_tot_area)
 
-    df_tot_line = pd.concat(tmp_concat_line, axis=1)
-    df_tot_line = remove_na_values(df_tot_line)
+    if len(tmp_concat_line) > 0:
+        df_tot_line = pd.concat(tmp_concat_line, axis=1)
+        df_tot_line = remove_na_values(df_tot_line)
+
+        # Making sure both dataframes have the same ordered index
+        df_tot_line = df_tot_line.reindex(df_tot_area.index)
+    else:
+        df_tot_line = None
+
 
     if reorder_dispatch is not None:
         new_order = [col for col in reorder_dispatch if col in df_tot_area.columns] + [col for col in
@@ -817,8 +833,21 @@ def dispatch_plot(df_area=None, filename=None, dict_colors=None, df_line=None, f
 
     fig, ax = plt.subplots(figsize=figsize)
 
+    if dict_colors is None:
+        palette = sns.color_palette("viridis", n_colors=len(df_area.columns))
+        final_colors = {col: color for col, color in zip(df_area.columns, palette)}
+    else:
+        # Start with the provided colors.
+        final_colors = dict_colors.copy()
+        # Identify missing columns.
+        missing = [col for col in df_area.columns if col not in final_colors]
+        if missing:
+            palette = sns.color_palette("Set2", n_colors=len(missing))
+            for col, color in zip(missing, palette):
+                final_colors[col] = color
+
     if df_area is not None:
-        df_area.plot.area(ax=ax, stacked=True, color=dict_colors, linewidth=0)
+        df_area.plot.area(ax=ax, stacked=True, color=final_colors, linewidth=0)
         pd_index = df_area.index
     if df_line is not None:
         if df_area is not None:
@@ -834,7 +863,6 @@ def dispatch_plot(df_area=None, filename=None, dict_colors=None, df_line=None, f
 
     # Add axis labels and title
     ax.set_ylabel('Generation (MWh)', fontweight='bold')
-    # ax.text(0, 1.2, f'Dispatch', fontsize=9, fontweight='bold', transform=ax.transAxes)
     # set ymin to 0
     if ymin is not None:
         ax.set_ylim(bottom=ymin)

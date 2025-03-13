@@ -106,12 +106,22 @@ def process_outputs(epm_results, scenarios_rename=None, keys=None, folder=None, 
             epm_dict[k] = epm_dict[k].astype({'generator': 'str'})
         if 'fuel' in i.columns:
             epm_dict[k] = epm_dict[k].astype({'fuel': 'str'})
+        if 'tech' in i.columns:
+            epm_dict[k] = epm_dict[k].astype({'tech': 'str'})
+        # if 'season' in i.columns:
+        #     epm_dict[k] = epm_dict[k].astype({'season': 'str'})
+        # if 'day' in i.columns:
+        #     epm_dict[k] = epm_dict[k].astype({'day': 'str'})
+        # if 't' in i.columns:
+        #     epm_dict[k] = epm_dict[k].astype({'t': 'str'})
         if 'scenario' in i.columns:
             epm_dict[k] = epm_dict[k].astype({'scenario': 'str'})
         if 'competition' in i.columns:
             epm_dict[k] = epm_dict[k].astype({'competition': 'str'})
         if 'attribute' in i.columns:
             epm_dict[k] = epm_dict[k].astype({'attribute': 'str'})
+        if 'firmstatus' in i.columns:
+            epm_dict[k] = epm_dict[k].astype({'firmstatus': 'str'})
 
     if additional_processing:
         folder_output = Path(folder) / Path('dataframes')
@@ -285,18 +295,6 @@ def extract_simulation_folder(results_folder):
 
     inverted_dict = {k: pd.concat(v, names=['scenario']).reset_index('scenario') for k, v in inverted_dict.items()}
 
-    # dict_df = {}
-    # for scenario in [i for i in os.listdir(folder) if os.path.isdir(os.path.join(folder, i))]:
-    #     if 'simulation' in scenario:
-    #         dict_df.update({scenario: extract_scenario_folder(Path(folder) / Path(scenario))})
-    #
-    # inverted_dict = {
-    #     k: {outer: inner[k] for outer, inner in dict_df.items() if k in inner}
-    #     for k in {key for inner in dict_df.values() for key in inner}
-    # }
-    #
-    # inverted_dict = {k: pd.concat(v, names=['scenario']).reset_index('scenario') for k, v in inverted_dict.items()}
-
     return inverted_dict
 
 
@@ -381,6 +379,27 @@ def prepare_data_for_cournot(d, scenario, additional_data, folder):
     supplyfirm = d['pSupplyFirm'].drop(columns=['competition']).set_index(['firm', 'zone', 'year', 'season', 'day', 't'])
     scenario = estimate_hourly_contracting(supplyfirm, additional_data['pFirmData'], folder, scenario)
     return scenario
+
+def get_duration_curve(value_df, duration_df):
+    value_df = value_df.copy()
+
+    # Reshape duration to merge properly
+    duration_df = duration_df.stack().to_frame().reset_index().rename(
+        columns={0: 'weight', 'level_0': 'season', 'level_1': 'day', 'level_2': 't'})
+
+    # Merge price and duration_df
+    value_df = value_df.merge(duration_df, on=['season', 'day', 't'], how='left')
+
+    # Function to expand and add an hour index
+    def expand_group(df):
+        expanded_df = df.loc[df.index.repeat(df['weight'])].reset_index(drop=True)
+        expanded_df = expanded_df.sort_values(by='value', ascending=False)
+        expanded_df['hour'] = range(len(expanded_df))  # Assign duration from 0 to n for each group
+        return expanded_df
+
+    # Apply function per group
+    expanded_value_df = value_df.groupby(['scenario', 'competition'], group_keys=False).apply(expand_group)
+    return expanded_value_df
 
 
 def adjust_demand(demand_forecast, demand_profile, duration, hours=None):

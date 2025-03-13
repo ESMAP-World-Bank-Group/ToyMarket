@@ -245,7 +245,7 @@ def launch_market_multiple_scenarios(scenario_baseline='scenario_baseline.csv',
 
     if scenario_data:
         final_df = pd.concat(scenario_data, axis=1)
-        final_df.to_csv(os.path.join('simulation_scenarios.csv'), index=False)
+        final_df.to_csv(os.path.join('simulation_scenarios.csv'), index=True)
 
     return folder, result
 

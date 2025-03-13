@@ -1,0 +1,52 @@
+Processing,Color
+Coal,darkgray
+Oil,rosybrown
+Oil diesel,brown
+Gas,tan
+Battery Storage,slateblue
+Battery,slateblue
+Battery Storage 4h,slateblue
+Battery Storage 8h,slateblue
+Pumped-Hydro,cornflowerblue
+H2,lightcyan
+Biomass,darkseagreen
+Hydro,lightskyblue
+Wind,lightsteelblue
+Solar,orange
+Concentrated Solar,orange
+Trade,thistle
+Import,thistle
+Hydro RoR,lightskyblue
+Hydro Storage,lightskyblue
+Unmet demand,black
+Demand,red
+demand,red
+Exports,green
+Storage Charge,pink
+Onshore Wind,green
+Offshore Wind,blue
+Uranium,forestgreen
+Geothermal,brown
+CSP,yellow
+AnnCapex,steelblue
+FOM,darkseagreen
+VOM,gold
+Fuel,peru
+Transmissions,skyblue
+Unmet demand,salmon
+Excess gen,silver
+VRE curtail,mediumaquamarine
+Import,pink
+Export,slateblue
+Spinning reserve,dimgrey'
+Cournot,blue
+Least-cost,red
+EskomNuclear,forestgreen
+EskomWater,#66C2A5
+EskomOldCoal,#B3B3B3
+EskomRenewable,#A6D854
+EskomNewCoal,#FC8D62
+EskomDiesel,black
+Fringe,#E78AC3
+Engie,#8DA0CB
+Sasol,#E5C494
