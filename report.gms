@@ -54,6 +54,9 @@ $ifThenI %SCENARIO% == Least-cost
     pDispatch("%SCENARIO%",z,y,q,d,t,'Unmet demand') = vUnmetDemand.L(z,y,q,d,t);
 $endIf
 
+pDispatch("%SCENARIO%",z,y,q,d,t,"Imports") =      sum(sTopology(z,z2), vFlow.l(z2,z,y,q,d,t)) ;
+pDispatch("%SCENARIO%",z,y,q,d,t,"Exports") =   - sum(sTopology(z,z2), vFlow.l(z,z2,y,q,d,t));
+
 
 *
 *pSupplyMarket("%SCENARIO%",z,y,q,d,t) = vSupplyMarket.L(y,z,q,d,t);    

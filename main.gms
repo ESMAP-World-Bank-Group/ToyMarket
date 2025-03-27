@@ -132,7 +132,7 @@ sTopology(z,z2) = sum((y),pTransferLimit(z,z2,y));
 display sTopology;
 
 
-execute_unload '%GDX_INPUT%_common' gimap, gzmap, gfmap, gtechmap, istatusmap, pVarCost, pFixedDemand, pFirmData, pWeightYear, pRR;
+execute_unload '%GDX_INPUT%_common' gimap, gzmap, gfmap, gtechmap, istatusmap, pVarCost, pFixedDemand, pFirmData, pWeightYear, pRR, sTopology, pTransferLimit;
 
 
 *----------------------------------------------------------------------------------------

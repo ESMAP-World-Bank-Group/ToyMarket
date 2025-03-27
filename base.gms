@@ -108,7 +108,7 @@ vUnmetDemand(z,y,q,d,t)           'Unmet demand under the fixed demand setting'
 vGenSupply(y,g,q,d,t)             'Supply of each generator'
 vStorageLevel(y,g,q,d,t)          'Storage level for storage generators'
 vStorageCharging(y,g,q,d,t)       'Storage charging for storage generators'
-vPowerFlow(z,z2,y,q,d,t)          'Power flow between the zones'
+vFlow(z,z2,y,q,d,t)          'Power flow between the zones'
 
 ;
 
@@ -159,8 +159,8 @@ eCF(g,y,q)$(NOT pGenData(g,"VRE") AND pAvailability(g,q))..
 eDemandSupply(y,z,q,d,t)..
             sum(g$(gzmap(g,z)), vGenSupply(y,g,q,d,t))
             - sum(g$(gzmap(g,z) AND sto(g)), vStorageCharging(y,g,q,d,t))
-            - sum(z2$sTopology(z,z2), vPowerFlow(z,z2,y,q,d,t))
-            + sum(z2$sTopology(z,z2), vPowerFlow(z2,z,y,q,d,t))
+            - sum(z2$sTopology(z,z2), vFlow(z,z2,y,q,d,t))
+            + sum(z2$sTopology(z,z2), vFlow(z2,z,y,q,d,t))*0.999
             - vSupplyMarket(z,y,q,d,t) =E= 0 ;
         
 
@@ -205,7 +205,7 @@ eStorageBalance1(y,sto,q,d,t)$(ord(t)=1)..
 *---------------- TRADE EQUATIONS ------------------------
 
 eTransferLimit(z,z2,y,q,d,t).. 
-             vPowerFlow(z,z2,y,q,d,t) + vPowerFlow(z2,z,y,q,d,t) =L= pTransferLimit(z,z2,y);
+             vFlow(z,z2,y,q,d,t) + vFlow(z2,z,y,q,d,t) =L= pTransferLimit(z,z2,y);
 
 *---------------- FIXED DEMAND EQUATIONS ------------------------
 
@@ -220,8 +220,8 @@ eObjFunFixedDemand..
 eDemandSupply_FixedDemand(y,z,q,d,t)..
             sum(g$(gzmap(g,z)), vGenSupply(y,g,q,d,t))
             - sum(g$(gzmap(g,z) AND sto(g)), vStorageCharging(y,g,q,d,t))
-            - sum(z2$sTopology(z,z2), vPowerFlow(z,z2,y,q,d,t))
-            + sum(z2$sTopology(z,z2), vPowerFlow(z2,z,y,q,d,t))
+            - sum(z2$sTopology(z,z2), vFlow(z,z2,y,q,d,t))
+            + sum(z2$sTopology(z,z2), vFlow(z2,z,y,q,d,t))*0.999
             + vUnmetDemand(z,y,q,d,t) - pFixedDemand(z,y,q,d,t)=E= 0 ;
             
 
