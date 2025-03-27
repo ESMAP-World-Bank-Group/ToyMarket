@@ -49,7 +49,10 @@ ALIAS (y,yy)
 ;
 
 SINGLETON SET sFirstYear(y);           
-SINGLETON SET sFinalYear(y); 
+SINGLETON SET sFinalYear(y);
+
+ALIAS (z,z2);
+SET sTopology(z,z2);
 
 ;
 *----------------------------------------------------------------------------------------
@@ -58,25 +61,26 @@ SINGLETON SET sFinalYear(y);
 
 PARAMETERS
 
-pDuration(q<,d<,t<)            'Duration of each time segment'
-A(z,y,q,d,t)                       'Coefficient A of the inverse demand function'
-B(z,y,q,d,t)                       'Coefficient B of the inverse demand function'
-pGenDatax(g,i,z,tech,f, sGenMap)              'Generation data'
-pGenData(g,sGenMap)              'Generation data'
-pStorageData(g,sStorageMap)       'Storage data'
-pFirmData(i,sFirmMap)            'Firm data'
-pDemandProfile(z,q,d,t)              'Demand profile'
-pDemandForecast(z,*,y)                'Demand forecast'
-pFixedDemand(z,y,q,d,t)         'Fixed demand profile for model with perfect competition'
-pVarCost(g,y)                    'Variable costs for various products'
-pFuelPrice(f,y)                  'Fuel price'
-pContractVolume(i,z,y,q,d,t)       'Contract volumes of firms'
-pFixedCapacity(g,y)              'Total fixed capacity in dispatch module'
-pVREgenProfileTech(z,tech,q,d,t) 'VRE generation profile by hour and tech -- normalized (per MW of solar and wind capacity)'
-pVREgenProfile(q,d,t,g)         'VRE generation profile by hour -- normalized (per MW of solar and wind capacity)'
-pAvailability(g,q)               'Availability by generation type and season or quarter in percentage'
-pMinGen(i,q)                     'Minimum generation by firm per season in percentage'
-pSettings(*)                      'Parameter with scalars'
+pDuration(q<,d<,t<)                    'Duration of each time segment'
+A(z,y,q,d,t)                           'Coefficient A of the inverse demand function'
+B(z,y,q,d,t)                           'Coefficient B of the inverse demand function'
+pGenDatax(g,i,z,tech,f, sGenMap)       'Generation data'
+pGenData(g,sGenMap)                    'Generation data'
+pStorageData(g,sStorageMap)            'Storage data'
+pFirmData(i,sFirmMap)                  'Firm data'
+pDemandProfile(z,q,d,t)                'Demand profile'
+pDemandForecast(z,*,y)                 'Demand forecast'
+pFixedDemand(z,y,q,d,t)                'Fixed demand profile for model with perfect competition'
+pVarCost(g,y)                          'Variable costs for various products'
+pFuelPrice(f,y)                        'Fuel price'
+pContractVolume(i,z,y,q,d,t)           'Contract volumes of firms'
+pFixedCapacity(g,y)                    'Total fixed capacity in dispatch module'
+pVREgenProfileTech(z,tech,q,d,t)       'VRE generation profile by hour and tech -- normalized (per MW of solar and wind capacity)'
+pVREgenProfile(q,d,t,g)                'VRE generation profile by hour -- normalized (per MW of solar and wind capacity)'
+pAvailability(g,q)                     'Availability by generation type and season or quarter in percentage'
+pMinGen(i,q)                           'Minimum generation by firm per season in percentage'
+pSettings(*)                           'Parameter with scalars'
+pTransferLimit(z,z2,y)                 'Transfer capacity between zones'
  
 
 pRR(y)                          'Discount rate'
@@ -104,6 +108,7 @@ vUnmetDemand(z,y,q,d,t)           'Unmet demand under the fixed demand setting'
 vGenSupply(y,g,q,d,t)             'Supply of each generator'
 vStorageLevel(y,g,q,d,t)          'Storage level for storage generators'
 vStorageCharging(y,g,q,d,t)       'Storage charging for storage generators'
+vPowerFlow(z,z2,y,q,d,t)          'Power flow between the zones'
 
 ;
 
@@ -115,17 +120,18 @@ eJointCap                        'Supply is bounded by capacity'
 eVRE_Limit                       'VRE production is bounded by capacity factors'
 eCF                              'Seasonal (weekly) capacity factor constraint'
 eDemandSupply                    'Demand-supply balance for each product and node (zone)'
-eDemandSupply_FixedDemand           'Demand-supply balance for each product and node (zone)'
+eDemandSupply_FixedDemand        'Demand-supply balance for each product and node (zone)'
 ePrice(z,y,q,d,t)                'Price definition as the point at the inverse demand curve'
 ePriceCap(z,y,q,d,t)             'Price cap'
 eMinGen(i,y,q)                   'Minimal level of energy availability, estimated per season'
-eRampUP(g,y,q,d,t)                'Ramp up constraint'
-eRampDOWN(g,y,q,d,t)               'Ramp down constraint'
+eRampUP(g,y,q,d,t)               'Ramp up constraint'
+eRampDOWN(g,y,q,d,t)             'Ramp down constraint'
 
-eStorageChargingLimit(y,g,q,d,t)     'Charging cannot be higher than installed capacity'
-eStorageCap(y,g,q,d,t)             'Stored energy cannot be higher than installed energy capacity'
-eStorageBalance(y,g,q,d,t)        'Storage balance equation'
-eStorageBalance1(y,g,q,d,t)       'Storage balance equation in the first hour'
+eStorageChargingLimit(y,g,q,d,t) 'Charging cannot be higher than installed capacity'
+eStorageCap(y,g,q,d,t)           'Stored energy cannot be higher than installed energy capacity'
+eStorageBalance(y,g,q,d,t)       'Storage balance equation'
+eStorageBalance1(y,g,q,d,t)      'Storage balance equation in the first hour'
+eTransferLimit(z,z2,y,q,d,t)       'Transfer limit between zones'
 
 ;
 
@@ -151,7 +157,12 @@ eCF(g,y,q)$(NOT pGenData(g,"VRE") AND pAvailability(g,q))..
             
             
 eDemandSupply(y,z,q,d,t)..
-            sum(g$(gzmap(g,z)), vGenSupply(y,g,q,d,t)) - sum(g$(gzmap(g,z) AND sto(g)), vStorageCharging(y,g,q,d,t)) - vSupplyMarket(z,y,q,d,t) =E= 0 ;
+            sum(g$(gzmap(g,z)), vGenSupply(y,g,q,d,t))
+            - sum(g$(gzmap(g,z) AND sto(g)), vStorageCharging(y,g,q,d,t))
+            - sum(z2$sTopology(z,z2), vPowerFlow(z,z2,y,q,d,t))
+            + sum(z2$sTopology(z,z2), vPowerFlow(z2,z,y,q,d,t))
+            - vSupplyMarket(z,y,q,d,t) =E= 0 ;
+        
 
 ePrice(z,y,q,d,t)..
             vPrice(z,y,q,d,t) =E= A(z,y,q,d,t)-B(z,y,q,d,t)*(vSupplyMarket(z,y,q,d,t)) ;
@@ -190,6 +201,12 @@ eStorageBalance1(y,sto,q,d,t)$(ord(t)=1)..
 
 * Add CSP specific equations: need to understand their specificities
 
+
+*---------------- TRADE EQUATIONS ------------------------
+
+eTransferLimit(z,z2,y,q,d,t).. 
+             vPowerFlow(z,z2,y,q,d,t) + vPowerFlow(z2,z,y,q,d,t) =L= pTransferLimit(z,z2,y);
+
 *---------------- FIXED DEMAND EQUATIONS ------------------------
 
 
@@ -203,9 +220,11 @@ eObjFunFixedDemand..
 eDemandSupply_FixedDemand(y,z,q,d,t)..
             sum(g$(gzmap(g,z)), vGenSupply(y,g,q,d,t))
             - sum(g$(gzmap(g,z) AND sto(g)), vStorageCharging(y,g,q,d,t))
-*            - sum(z2$sTopology(z,z2), vPowerFlow(pr,z,z2,y,w,t))
-*            + sum(z2$sTopology(z,z2), vPowerFlow(pr,z2,z,y,w,t))*0.999
+            - sum(z2$sTopology(z,z2), vPowerFlow(z,z2,y,q,d,t))
+            + sum(z2$sTopology(z,z2), vPowerFlow(z2,z,y,q,d,t))
             + vUnmetDemand(z,y,q,d,t) - pFixedDemand(z,y,q,d,t)=E= 0 ;
+            
+
 
 
 model Cournot
@@ -215,6 +234,7 @@ eJointCap
 eVRE_Limit
 eCF
 eDemandSupply
+eTransferLimit
 ePrice
 eMinGen
 eRampUP
@@ -234,6 +254,7 @@ eJointCap
 eVRE_Limit
 eCF
 eDemandSupply_FixedDemand
+eTransferLimit
 eMinGen
 eRampUP
 eRampDOWN

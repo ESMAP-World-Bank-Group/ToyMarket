@@ -60,7 +60,7 @@ $if %SCENARIO% == Cournot $include "%READER_FILE_COURNOT%"
 $gdxIn %GDX_INPUT%
 
 * Loading parameters from the GDX file 
-$load    y, pDuration, gmap, pGenDatax, pStorageData, pFirmData, pDemandProfile, pDemandForecast, pVREgenProfileTech, pAvailability, pMinGen, pFuelPrice, pSettings
+$load    y, pDuration, gmap, pGenDatax, pStorageData, pFirmData, pDemandProfile, pDemandForecast, pVREgenProfileTech, pAvailability, pMinGen, pFuelPrice, pSettings, pTransferLimit
 
 $gdxIn
 
@@ -127,6 +127,10 @@ pRR(y) = 1/[(1+pSettings("DR"))**(sum(yy$(ord(yy)<ord(y)), pWeightYear(yy)))];
 
 
 pFixedDemand(z,y,q,d,t) = pDemandProfile(z,q,d,t) * pDemandForecast(z,'Peak',y);
+
+sTopology(z,z2) = sum((y),pTransferLimit(z,z2,y));
+display sTopology;
+
 
 execute_unload '%GDX_INPUT%_common' gimap, gzmap, gfmap, gtechmap, istatusmap, pVarCost, pFixedDemand, pFirmData, pWeightYear, pRR;
 

@@ -21,9 +21,11 @@ $if not set pStorageData $set pStorageData input/gendata/pStorageData.csv
 $if not set pVREgenProfile $set pVREgenProfile input/availability/pVREProfile.csv
 $if not set pAvailability $set pAvailability input/availability/pAvailabilityCurrent.csv
 
-
 * FIRM DATA
 $if not set pFirmData $set pFirmData input/firm/pFirmData.csv
+
+* TRADE DATA
+$if not set pTransferLimit $set pTransferLimit input/trade/pTransferLimit.csv
 
 
 $onEmbeddedCode Connect:
@@ -145,6 +147,16 @@ $onEmbeddedCode Connect:
     name: pSettings
     indexColumns: [1]
     valueColumns: [2]
+    type: par
+    
+- CSVReader:
+    trace: 0
+    file: %pTransferLimit%
+    name: pTransferLimit
+    indexSubstitutions: {.nan: ""}
+    valueSubstitutions: {0: .nan}
+    indexColumns: [1,2]
+    header: [1]
     type: par
     
 
