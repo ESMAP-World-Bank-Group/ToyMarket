@@ -82,8 +82,8 @@ def process_outputs(epm_results, scenarios_rename=None, keys=None, folder=None, 
                       'z': 'zone', 'g': 'generator', 'f': 'fuel', 'q': 'season', 'd': 'day', 't': 't', 'i': 'firm',
                       'istatus': 'firmstatus'}
     if keys is None:
-        keys = ['pPrice', 'pDemand', 'pSupplyFirm', 'pGenSupply', 'pDispatch', 'pSupplyFirm', 'gfmap', 'gimap', 'gtechmap',
-                'pVarCost', 'pFirmData', 'istatusmap']
+        keys = ['pPrice', 'pDemand', 'pSupplyFirm', 'pGenSupply', 'pDispatch', 'pSupplyFirm', 'pPlantCapacity', 'pCapacity',
+                'gfmap', 'gimap', 'gtechmap', 'pVarCost', 'pFirmData', 'istatusmap']
     epm_dict = {k: i.rename(columns=rename_columns) for k, i in epm_results.items() if
                 k in keys and k in epm_results.keys()}
 
@@ -285,7 +285,8 @@ def process_additional_dataframe(epm_results, folder, scenarios_rename=None):
 
     if folder is not None:
         for key, item in additional_df.items():
-            additional_df[key].to_csv(Path(folder)/  Path('dataframes') / Path(f'{key}.csv'), float_format='%.3f')
+            additional_df[key].to_csv(Path(folder)/  Path('dataframes') / Path(f'{key}.csv'), float_format='%.3f',
+                                      index=False)
 
     return epm_results
 
@@ -393,7 +394,7 @@ def load_additional_data(scenario):
         'elasticity': elasticity
     }
 
-    pFirmData = pd.read_csv(scenario['pFirmData'], index_col=[0,1])
+    pFirmData = pd.read_csv(scenario['pFirmData'], index_col=[0])
     pFirmData = pFirmData.dropna().drop(columns='Fringe').rename(columns={'ContractLevel': 'value'})
     additional_data['pFirmData'] = pFirmData
     return additional_data

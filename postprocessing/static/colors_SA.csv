@@ -12,7 +12,7 @@ H2,lightcyan
 Biomass,darkseagreen
 Hydro,lightskyblue
 Wind,lightsteelblue
-Solar,orange
+Solar,yellow
 Concentrated Solar,orange
 Trade,thistle
 Import,thistle
@@ -26,6 +26,7 @@ Storage Charge,pink
 Onshore Wind,green
 Offshore Wind,blue
 Uranium,forestgreen
+Nuclear,#66CDAA
 Geothermal,brown
 CSP,yellow
 AnnCapex,steelblue

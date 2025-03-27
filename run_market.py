@@ -1,3 +1,5 @@
+from os import remove
+
 import pandas as pd
 import os
 import subprocess
@@ -162,7 +164,8 @@ def launch_market_multiprocess(df, scenario_name, path_gams, path_engine_file=Fa
 
 def launch_market_multiple_scenarios(scenario_baseline='scenario_baseline.csv',
                                      scenarios_specification='scenarios_specification.csv',
-                                     selected_scenarios=['baseline'],
+                                     selected_scenarios=None,
+                                     removed_scenarios=None,
                                      cpu=1, path_gams=None,
                                      path_engine_file=False):
     """
@@ -205,11 +208,12 @@ def launch_market_multiple_scenarios(scenario_baseline='scenario_baseline.csv',
     else:
         s = {}
 
-    # Add the baseline scenario
     s.update({'baseline': scenario_baseline})
 
     if selected_scenarios is not None:
         s = {k: s[k] for k in selected_scenarios}
+    if removed_scenarios is not None:
+        s = {k: v for k, v in s.items() if k not in removed_scenarios}
 
     # Add full path to the files
     for k in s.keys():
@@ -252,9 +256,11 @@ def launch_market_multiple_scenarios(scenario_baseline='scenario_baseline.csv',
 
 if __name__ == '__main__':
     launch_market_multiple_scenarios(scenario_baseline='input/scenario_baseline.csv',
-                                     scenarios_specification='input/scenario_spec.csv',
+                                     scenarios_specification='input/scenario_spec_param.csv',
                                      # selected_scenarios=['baseline', 'Contract1', 'Contract0p8', 'EskomDifferentiate', 'CoalDifferentiate', 'LowAvailability', 'FullDifferentiate'],
-                                     selected_scenarios=['baseline', 'Contract1', 'FullDifferentiate', 'FullDifferentiateNoContract'],
-                                     # selected_scenarios=['baseline'],
+                                     # selected_scenarios=['baseline', 'Contract1', 'FullDifferentiate', 'FullDifferentiateNoContract', 'EskomDifferentiate'],
+                                     # selected_scenarios=['baseline', 'Current', 'Current2026', 'CurrentFullAvail'],
+                                     selected_scenarios=['baseline'],
+                                     # removed_scenarios=['baseline'],
                                      cpu=1, path_gams=None,
                                      path_engine_file=None)

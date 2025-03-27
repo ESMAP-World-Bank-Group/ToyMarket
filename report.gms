@@ -16,6 +16,8 @@ PARAMETER
         pSupplyFirmAnnual(s,i,z,y,q,d,t)                ' Annual firm supply by scenario, period, and market player'
         pDemand(s,z,y,q,d,t)                    'Demand under the Cournot scenario'
         pDispatch(s,z,y,q,d,t,*)                'Dispatch information, including unserved demand.'
+        pPlantCapacity(s,g,y)                   'Plant capacity'
+        pCapacity(s,f,y)                        'Fuel capacity'
              
 ;
 
@@ -35,6 +37,10 @@ $endIf
 pSupplyFirm("%SCENARIO%",i,z,y,q,d,t) = Sum((g)$(gimap(g,i) and gzmap(g,z)), vGenSupply.L(y,g,q,d,t));
 
 pGenSupply("%SCENARIO%",y,g,q,d,t) = vGenSupply.L(y,g,q,d,t);
+
+pPlantCapacity("%SCENARIO%",g,y) = pFixedCapacity(g,y);
+pCapacity("%SCENARIO%",f,y) = sum(gfmap(g,f), pFixedCapacity(g,y));
+
 
 $ifThenI %SCENARIO% == Cournot
     pDemand("%SCENARIO%",z,y,q,d,t) = vSupplyMarket.L(z,y,q,d,t);

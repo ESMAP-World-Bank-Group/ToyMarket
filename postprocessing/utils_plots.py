@@ -8,6 +8,7 @@ from itertools import cycle
 import plotly.express as px
 import plotly.graph_objects as go
 import seaborn as sns
+from utils import get_duration_curve, filter_dataframe
 # import ipywidgets as widgets
 # from IPython.display import display
 
@@ -112,10 +113,10 @@ def process_for_labels(epm_dict, dict_specs):
     return epm_dict
 
 
-def make_stacked_bar_subplots(df, filename, dict_colors, selected_zone=None, selected_year=None, column_subplots='year',
+def make_stacked_bar_subplots(df, filename, dict_colors, figsize=(10,6), selected_zone=None, selected_year=None, column_subplots='year',
                               column_stacked='fuel', column_multiple_bars='scenario',
                               column_value='value', select_xaxis=None, dict_grouping=None, order_scenarios=None,
-                              dict_scenarios=None,
+                              order_subplots=None, dict_scenarios=None,
                               format_y=lambda y, _: '{:.0f} MW'.format(y),  annotation_format="{:.0f}",
                               order_stacked=None, cap=2, annotate=True,
                               show_total=False, fonttick=12, rotation=0, title=None):
@@ -213,14 +214,20 @@ def make_stacked_bar_subplots(df, filename, dict_colors, selected_zone=None, sel
     if select_xaxis is not None:
         df = df.loc[:, [i for i in df.columns if i in select_xaxis]]
 
-    stacked_bar_subplot(df, column_stacked, filename, dict_colors, format_y=format_y, annotation_format=annotation_format,
+    if order_subplots is not None:  # order subplots
+        new_order = [c for c in order_subplots if c in df.columns] + [c for c in df.columns if
+                                                                          c not in order_subplots]
+        df = df.loc[:, new_order]
+
+
+    stacked_bar_subplot(df, column_stacked, filename, dict_colors, figsize=figsize, format_y=format_y, annotation_format=annotation_format,
                         rotation=rotation, order_scenarios=order_scenarios, dict_scenarios=dict_scenarios,
                         order_columns=order_stacked, cap=cap, annotate=annotate, show_total=show_total,
                         fonttick=fonttick, title=title)
 
 
 
-def stacked_bar_subplot(df, column_group, filename, dict_colors=None, year_ini=None, order_scenarios=None,
+def stacked_bar_subplot(df, column_group, filename, dict_colors=None, figsize=(10,6), year_ini=None, order_scenarios=None,
                         order_columns=None,
                         dict_scenarios=None, rotation=0, fonttick=14, legend=True,
                         format_y=lambda y, _: '{:.0f} GW'.format(y), annotation_format="{:.0f}",
@@ -275,7 +282,7 @@ def stacked_bar_subplot(df, column_group, filename, dict_colors=None, year_ini=N
         width_ratios = [1] + [len(n_scenario)] * (n_columns - 1)
     else:
         width_ratios = [1] * n_columns
-    fig, axes = plt.subplots(n_rows, n_columns, figsize=(10, 6 * n_rows), sharey='all',
+    fig, axes = plt.subplots(n_rows, n_columns, figsize=(figsize[0], figsize[1] * n_rows), sharey='all',
                              gridspec_kw={'width_ratios': width_ratios})
     if n_rows * n_columns == 1:  # If only one subplot, `axes` is not an array
         axes = [axes]  # Convert to list to maintain indexing consistency
@@ -383,7 +390,7 @@ def stacked_bar_subplot(df, column_group, filename, dict_colors=None, year_ini=N
 def make_multiple_lines_subplots(df, filename, dict_colors, selected_zone=None, selected_year=None, column_subplots='scenario',
                               column_multiple_lines='competition', column_xaxis='t',
                               column_value='value', select_subplots=None, order_scenarios=None,
-                              dict_scenarios=None,
+                              dict_scenarios=None, figsize=(10,6),
                               format_y=lambda y, _: '{:.0f} MW'.format(y),  annotation_format="{:.0f}",
                               order_stacked=None, max_ticks=10, annotate=True,
                               show_total=False, fonttick=12, rotation=0, title=None):
@@ -451,13 +458,13 @@ def make_multiple_lines_subplots(df, filename, dict_colors, selected_zone=None, 
     if select_subplots is not None:
         df = df.loc[:, [i for i in df.columns if i in select_subplots]]
 
-    multiple_lines_subplot(df, column_multiple_lines, filename, dict_colors, format_y=format_y, annotation_format=annotation_format,
-                        rotation=rotation, order_scenarios=order_scenarios, dict_scenarios=dict_scenarios,
-                        order_columns=order_stacked, max_ticks=max_ticks, annotate=annotate, show_total=show_total,
-                        fonttick=fonttick, title=title)
+    multiple_lines_subplot(df, column_multiple_lines, filename, figsize=figsize, dict_colors=dict_colors,  format_y=format_y,
+                           annotation_format=annotation_format,  rotation=rotation, order_scenarios=order_scenarios, dict_scenarios=dict_scenarios,
+                           order_columns=order_stacked, max_ticks=max_ticks, annotate=annotate, show_total=show_total,
+                           fonttick=fonttick, title=title)
 
 
-def multiple_lines_subplot(df, column_multiple_lines, filename, dict_colors=None, year_ini=None, order_scenarios=None,
+def multiple_lines_subplot(df, column_multiple_lines, filename, figsize=(10,6), dict_colors=None, order_scenarios=None,
                             order_columns=None, dict_scenarios=None, rotation=0, fonttick=14, legend=True,
                            format_y=lambda y, _: '{:.0f} GW'.format(y), annotation_format="{:.0f}",
                            max_ticks=10, annotate=True, show_total=False, title=None):
@@ -508,7 +515,7 @@ def multiple_lines_subplot(df, column_multiple_lines, filename, dict_colors=None
     n_columns = min(3, num_subplots)  # Limit to 3 columns per row
     n_rows = int(np.ceil(num_subplots / n_columns))
     width_ratios = [1] * n_columns
-    fig, axes = plt.subplots(n_rows, n_columns, figsize=(10, 6 * n_rows), sharey='all',
+    fig, axes = plt.subplots(n_rows, n_columns, figsize=(figsize[0], figsize[1] * n_rows), sharey='all',
                              gridspec_kw={'width_ratios': width_ratios})
 
     if n_rows * n_columns == 1:  # If only one subplot, `axes` is not an array
@@ -782,11 +789,11 @@ def make_complete_fuel_dispatch_plot(dfs_area, dfs_line, dict_colors, zone, year
                                                                                        col not in reorder_dispatch]
         df_tot_area = df_tot_area[new_order]
 
-    if select_time is None:
-        temp = 'all'
-    temp = f'{year}_{temp}'
-    if filename is not None:
-        filename = filename.split('.')[0] + f'_{temp}.png'
+    # if select_time is None:
+    #     temp = 'all'
+    # temp = f'{year}_{temp}'
+    # if filename is not None:
+    #     filename = filename.split('.')[0] + f'_{temp}.png'
 
     if not interactive:
         dispatch_plot(df_tot_area, filename, df_line=df_tot_line, dict_colors=dict_colors, legend_loc=legend_loc,
@@ -1150,7 +1157,8 @@ def scatter_plot_on_ax(ax, df, column_xaxis, column_yaxis, column_color, color_d
 
 
 def subplot_pie_new(df, index, dict_colors=None, subplot_column=None, share_column='value', title='', figsize=(16, 4),
-                    percent_cap=1, filename=None, rename=None, bbox_to_anchor=(0.5, -0.1), loc='lower center'):
+                    percent_cap=1, filename=None, rename=None, bbox_to_anchor=(0.5, -0.1), loc='lower center',
+                    font_title=16, annotation_font=10):
     """
     Creates pie charts for data grouped by a column, or a single pie chart if no grouping is specified.
 
@@ -1201,7 +1209,7 @@ def subplot_pie_new(df, index, dict_colors=None, subplot_column=None, share_colu
         for ax, (name, group) in zip(axes, groups):
             colors = [dict_colors[f] for f in group[index]]
             handles, labels = plot_pie_on_ax(ax, group, index, share_column, percent_cap, colors,
-                                             title=f"{title} - {subplot_column}: {name}")
+                                             title=f"{title} - {subplot_column}: {name}", fontsize=font_title, annotation_size=annotation_font)
             all_labels.update(group[index])  # Collect unique labels
 
         # Hide unused subplots
@@ -1227,7 +1235,17 @@ def subplot_pie_new(df, index, dict_colors=None, subplot_column=None, share_colu
     else:  # Create a single pie chart if no subplot column is specified
         fig, ax = plt.subplots(figsize=(8, 6))
         colors = [dict_colors[f] for f in df[index]]
-        handles, labels = plot_pie_on_ax(ax, df, index, share_column, percent_cap, colors, title)
+        handles, labels = plot_pie_on_ax(ax, df, index, share_column, percent_cap, colors, title, fontsize=font_title,
+                                         annotation_size=annotation_font)
+
+        fig.legend(
+            handles,
+            labels,
+            loc=loc,
+            bbox_to_anchor=bbox_to_anchor,
+            ncol=1,  # Adjust number of columns based on subplots
+            frameon=False, fontsize=16
+        )
 
     # Save the figure if filename is provided
     plt.tight_layout()
@@ -1239,7 +1257,7 @@ def subplot_pie_new(df, index, dict_colors=None, subplot_column=None, share_colu
         plt.show()
 
 
-def plot_pie_on_ax(ax, df, index, share_column, percent_cap, colors, title, radius=None, annotation_size=8):
+def plot_pie_on_ax(ax, df, index, share_column, percent_cap, colors, title, radius=None, annotation_size=8, fontsize=16):
     """Pie plot on a single axis."""
     if radius is not None:
         df.plot.pie(
@@ -1263,7 +1281,7 @@ def plot_pie_on_ax(ax, df, index, share_column, percent_cap, colors, title, radi
             labels=None
         )
     ax.set_ylabel('')
-    ax.set_title(title)
+    ax.set_title(title, fontsize=fontsize)
 
     # Adjust annotation font sizes
     for text in ax.texts:
@@ -1274,3 +1292,139 @@ def plot_pie_on_ax(ax, df, index, share_column, percent_cap, colors, title, radi
     handles = [Patch(facecolor=color, label=label) for color, label in zip(colors, df[index])]
     labels = list(df[index])
     return handles, labels
+
+
+def make_automatic_plots(epm_results, zone, dict_specs, folder, scenarios_to_remove = None):
+
+    # Price plot
+    if not (Path(folder) / Path('images')).is_dir():
+        os.mkdir(Path(folder) / Path('images'))
+
+    df = epm_results['pPrice'].copy()
+    df["hour"] = df["t"].str.extract(r"(\d+)").astype(int).astype(str) + "h"
+
+    df["day_hour"] = df["day"].astype(str) + " - " + df["hour"]
+    df["season_day_hour"] = df["season"].astype(str) + " - " + df["day"].astype(str) + " - " + df["hour"]
+
+    if 'baseline' in df.scenario.unique():
+        df.loc[(df.scenario == 'baseline') & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
+    elif 'Baseline' in df.scenario.unique():
+        df.loc[(df.scenario == 'Baseline') & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
+    else:
+        df.loc[(df.scenario ==df.scenario.unique()[0]) & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
+
+    df = df[~((df["scenario"] != "Least-cost") & (df["competition"] == "Least-cost"))]
+
+    df = df.drop(columns=['competition'])
+
+    if scenarios_to_remove is not None:
+        df = df[~df["scenario"].isin(scenarios_to_remove)]
+
+    filename = Path(folder) / Path('images') / Path('prices.png')
+
+    make_multiple_lines_subplots(df, filename, dict_colors=None, figsize=(6, 6), column_subplots=None,
+                                 column_xaxis='season_day_hour',
+                                 column_value='value', column_multiple_lines='scenario',
+                                 format_y=lambda y, _: '{:.0f} US$ /MWh'.format(y), annotation_format="{:.0f}",
+                                 max_ticks=10, rotation=45)
+
+    # Price duration curves plots
+
+    df = epm_results['pPrice'].copy()
+    scenarios = pd.read_csv(Path(folder) / Path('simulation_scenarios.csv'), index_col=0)
+    if 'baseline' in scenarios.columns :
+        pDurationpath = scenarios.loc['pDuration', 'baseline']
+    elif 'Baseline' in scenarios.columns :
+        pDurationpath = scenarios.loc['pDuration', 'Baseline']
+    else:
+        pDurationpath = scenarios.loc['pDuration', scenarios.columns [0]]
+
+    pDuration = pd.read_csv(pDurationpath, index_col=[0, 1])
+
+    if 'baseline' in df.scenario.unique():
+        df.loc[(df.scenario == 'baseline') & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
+    elif 'Baseline' in df.scenario.unique():
+        df.loc[(df.scenario == 'Baseline') & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
+    else:
+        df.loc[(df.scenario == df.scenario.unique()[0]) & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
+
+    df = df[~((df["scenario"] != "Least-cost") & (df["competition"] == "Least-cost"))]
+
+    if scenarios_to_remove is not None:
+        df = df[~df["scenario"].isin(scenarios_to_remove)]
+
+    expanded_price = get_duration_curve(df, pDuration)
+
+    filename = Path(folder) / Path('images') / Path('price_duration_curve.png')
+
+    make_multiple_lines_subplots(expanded_price, filename, None, column_subplots=None, column_xaxis='hour',
+                                 column_value='value', column_multiple_lines='scenario',
+                                 format_y=lambda y, _: '{:.0f} US$ /MWh'.format(y), annotation_format="{:.0f}",
+                                 max_ticks=10, rotation=45, figsize=(6, 6))
+
+    # Energy by fuel subplot
+
+    df = epm_results['pEnergyByFuel'].copy()
+    df['value'] = df['value'] / 1e6
+
+    if scenarios_to_remove is not None:
+        df = df[~df["scenario"].isin(scenarios_to_remove)]
+
+    filename = Path(folder) / Path('images') / Path('energy_subplots.png')
+    make_stacked_bar_subplots(df, filename, dict_specs['colors'], column_stacked='fuel', column_subplots='scenario',
+                              column_value='value', column_multiple_bars='competition',
+                              format_y=lambda y, _: '{:.0f} TWh'.format(y), annotation_format="{:.0f}", cap=5,
+                              show_total=True)
+
+    # Energy by fuel plot
+
+    df = epm_results['pEnergyByFuel'].copy()
+    df['value'] = df['value'] / 1e6
+
+    df.loc[(df.scenario == 'baseline') & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
+
+    df = df[~((df["scenario"] != "Least-cost") & (df["competition"] == "Least-cost"))]
+
+    df = df.drop(columns=['competition'])
+
+    filename = Path(folder) / Path('images') / Path('energy.png')
+    make_stacked_bar_subplots(df, filename, dict_specs['colors'], column_stacked='fuel', column_subplots=None,
+                              column_value='value', column_multiple_bars='scenario',
+                              format_y=lambda y, _: '{:.0f} TWh'.format(y), annotation_format="{:.0f}", cap=5,
+                              show_total=True)
+
+    # Dispatch plots
+    if not (Path(folder) / Path('images') / Path('dispatch')).is_dir():
+        os.mkdir(Path(folder) / Path('images') / Path('dispatch'))
+
+    dispatch_df = epm_results['pEnergyByFuelDispatch'].copy()
+    dispatch_df['fuel'] = dispatch_df['fuel'].replace({'Uranium': 'Nuclear'})
+
+    dfs_to_plot_area = {
+        'pEnergyByFuelDispatch': dispatch_df,
+        'pDispatch': filter_dataframe(epm_results['pDispatch'], {'attribute': ['Unmet demand']})
+    }
+
+    dfs_to_plot_line = {
+        'pDemand': epm_results['pDemand']
+    }
+
+    for selected_scenario in dispatch_df.scenario.unique():
+        for competition in ['Least-cost', 'Cournot']:
+            for year in (dispatch_df.loc[dispatch_df.scenario == selected_scenario].groupby("year").filter(lambda x: x["value"].sum() > 0)).year.unique():
+                for season in dispatch_df.loc[dispatch_df.scenario == selected_scenario].season.unique():
+
+                    select_time = {
+                        'season': [season],
+                        'day': ['d1', 'd2', 'd3', 'd4', 'd5']
+                    }
+
+                    filename = Path(folder) / Path('images') / Path('dispatch') / Path(f'dispatch_{selected_scenario}_{competition}_{year}_{season}.png')
+
+                    make_complete_fuel_dispatch_plot(dfs_to_plot_area, dfs_to_plot_line, dict_colors=dict_specs['colors'],
+                                                     year=year, scenario=selected_scenario, competition=competition, zone=zone,
+                                                     fuel_grouping=None, select_time=select_time, filename=filename,
+                                                     reorder_dispatch=['Solar', 'Concentrated Solar', 'Hydro', 'Nuclear', 'Coal', 'Gas',
+                                                                       'Oil'],
+                                                     figsize=(10, 4))
+

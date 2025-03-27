@@ -60,7 +60,7 @@ $if %SCENARIO% == Cournot $include "%READER_FILE_COURNOT%"
 $gdxIn %GDX_INPUT%
 
 * Loading parameters from the GDX file 
-$load    y, pDuration, gmap, pGenDatax, pStorageData, pFirmDatax, pDemandProfile, pDemandForecast, pVREgenProfileTech, pAvailability, pMinGen, pFuelPrice, pScalars
+$load    y, pDuration, gmap, pGenDatax, pStorageData, pFirmData, pDemandProfile, pDemandForecast, pVREgenProfileTech, pAvailability, pMinGen, pFuelPrice, pScalars
 
 $gdxIn
 
@@ -83,20 +83,17 @@ $endIf
 * sStartYear(y) = y.first;
 
 pGenData(g,sGenMap) = sum((i,z,tech,f), pGenDatax(g,i,z,tech,f,sGenMap));
-pFirmData(i,sFirmMap) = sum((z), pFirmDatax(i,z,sFirmMap));
-
 
 gstatusmap(g,gstatus) = pGenData(g,'status')=gstatIndex(gstatus);
 istatusmap(i,istatus) = pFirmData(i,'Fringe')=istatIndex(istatus);
 
 
-
 committed(g) = gstatusmap(g,'Committed');
 eg(g)  = gstatusmap(g,'Existing');
 
-pCapacity(g,y) = 0;
-pCapacity(committed,y)$(y.val >= pGenData(committed,"StYr"))  = pGenData(committed,"Capacity");
-pCapacity(eg,y)$(y.val >= pGenData(eg,"StYr"))  = pGenData(eg,"Capacity");
+pFixedCapacity(g,y) = 0;
+pFixedCapacity(committed,y)$(y.val >= pGenData(committed,"StYr"))  = pGenData(committed,"Capacity");
+pFixedCapacity(eg,y)$((y.val >= pGenData(eg,"StYr")) and (y.val < pGenData(eg,"ReYr")))  = pGenData(eg,"Capacity");
 
 
 sFirstYear(y) = y.first;
@@ -184,10 +181,10 @@ $endIf
 $include %REPORT_FILE%
 
 $ifThenI %SCENARIO% == Least-cost
-    execute_unload 'ResultsPerfectCompetition.gdx' gimap, pPrice, pSupplyFirm, pSupplyMarket, pDemand, pFixedDemand, pGenSupply, pDispatch;
+    execute_unload 'ResultsPerfectCompetition.gdx' gimap, pPrice, pSupplyFirm, pSupplyMarket, pDemand, pFixedDemand, pGenSupply, pDispatch, pPlantCapacity, pCapacity;
 $endIf
 
 $ifThenI %SCENARIO% == Cournot
-    execute_unload 'ResultsCournot.gdx' pPrice, pSupplyFirm, pSupplyMarket, pDemand, pGenSupply, pDispatch;
+    execute_unload 'ResultsCournot.gdx' pPrice, pSupplyFirm, pSupplyMarket, pDemand, pGenSupply, pDispatch, pPlantCapacity, pCapacity;
 $endIf
 

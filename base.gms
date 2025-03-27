@@ -33,7 +33,7 @@ sto(g)                          'Storage generators'
 fringefirms(i)                       'Fringe generators'
 cournotfirms(i)                      'Cournot-behaving generators'
 
-sGenMap                        'Set of parameters for Generators tab'       /StYr, RetrYr, Capacity, Status, HeatRate, FOM, VOM, RampUpRate,
+sGenMap                        'Set of parameters for Generators tab'       /StYr, ReYr, Capacity, Status, HeatRate, FOM, VOM, RampUpRate,
                                                                             RampDownRate, VRE/
 sStorageMap                    'Set of parameters for Generators tab'       /StorageDuration, Efficiency/
 sFirmMap                        'Set of parameters for Generators tab'      /Fringe, ContractLevel/
@@ -64,7 +64,6 @@ B(z,y,q,d,t)                       'Coefficient B of the inverse demand function
 pGenDatax(g,i,z,tech,f, sGenMap)              'Generation data'
 pGenData(g,sGenMap)              'Generation data'
 pStorageData(g,sStorageMap)       'Storage data'
-pFirmDatax(i,z,sFirmMap)            'Firm data'
 pFirmData(i,sFirmMap)            'Firm data'
 pDemandProfile(z,q,d,t)              'Demand profile'
 pDemandForecast(z,*,y)                'Demand forecast'
@@ -72,7 +71,7 @@ pFixedDemand(z,y,q,d,t)         'Fixed demand profile for model with perfect com
 pVarCost(g,y)                    'Variable costs for various products'
 pFuelPrice(f,y)                  'Fuel price'
 pContractVolume(i,z,y,q,d,t)       'Contract volumes of firms'
-pCapacity(g,y)                   'Total capacity'
+pFixedCapacity(g,y)              'Total fixed capacity in dispatch module'
 pVREgenProfileTech(z,tech,q,d,t) 'VRE generation profile by hour and tech -- normalized (per MW of solar and wind capacity)'
 pVREgenProfile(q,d,t,g)         'VRE generation profile by hour -- normalized (per MW of solar and wind capacity)'
 pAvailability(g,q)               'Availability by generation type and season or quarter in percentage'
@@ -141,14 +140,14 @@ eObjFunCournot..
                    
 
 eJointCap(g,y,q,d,t)..
-            vGenSupply(y,g,q,d,t) =L= pCapacity(g,y);
+            vGenSupply(y,g,q,d,t) =L= pFixedCapacity(g,y);
             
 eVRE_Limit(g,y,q,d,t)$(pGenData(g,"VRE"))..
-            vGenSupply(y,g,q,d,t) =E= pVREgenProfile(q,d,t,g)*pCapacity(g,y);
+            vGenSupply(y,g,q,d,t) =E= pVREgenProfile(q,d,t,g)*pFixedCapacity(g,y);
             
             
 eCF(g,y,q)$(NOT pGenData(g,"VRE") AND pAvailability(g,q))..
-            sum((d,t), vGenSupply(y,g,q,d,t) * pDuration(q,d,t)) =L= pAvailability(g,q) * sum((d,t), pDuration(q,d,t)) * pCapacity(g,y);
+            sum((d,t), vGenSupply(y,g,q,d,t) * pDuration(q,d,t)) =L= pAvailability(g,q) * sum((d,t), pDuration(q,d,t)) * pFixedCapacity(g,y);
             
             
 eDemandSupply(y,z,q,d,t)..
@@ -162,15 +161,15 @@ ePriceCap(z,y,q,d,t)..
             
 
 eMinGen(i,y,q)$(pMinGen(i,q))..
-            sum((d,t), sum(g$(gimap(g,i)), vGenSupply(y,g,q,d,t))) =G= pMinGen(i,q) * sum(g$(gimap(g,i)),pCapacity(g,y)) * sum((d,t), pDuration(q,d,t));
+            sum((d,t), sum(g$(gimap(g,i)), vGenSupply(y,g,q,d,t))) =G= pMinGen(i,q) * sum(g$(gimap(g,i)),pFixedCapacity(g,y)) * sum((d,t), pDuration(q,d,t));
             
             
 eRampUP(g,y,q,d,t)$(ord(t)>1 AND pGenData(g,"RampUpRate") AND NOT pGenData(g,'VRE'))..
-         vGenSupply(y,g,q,d,t) - vGenSupply(y,g,q,d,t-1) =L= (pCapacity(g,y)*pGenData(g,"RampUpRate"));
+         vGenSupply(y,g,q,d,t) - vGenSupply(y,g,q,d,t-1) =L= (pFixedCapacity(g,y)*pGenData(g,"RampUpRate"));
          
 
 eRampDOWN(g,y,q,d,t)$(ord(t)>1 AND pGenData(g,"RampDownRate") AND NOT pGenData(g,'VRE'))..
-         vGenSupply(y,g,q,d,t-1) - vGenSupply(y,g,q,d,t) =L= (pCapacity(g,y)*pGenData(g,"RampUpRate"));
+         vGenSupply(y,g,q,d,t-1) - vGenSupply(y,g,q,d,t) =L= (pFixedCapacity(g,y)*pGenData(g,"RampUpRate"));
          
     
 *---------------- STORAGE EQUATIONS ------------------------
@@ -178,10 +177,10 @@ eRampDOWN(g,y,q,d,t)$(ord(t)>1 AND pGenData(g,"RampDownRate") AND NOT pGenData(g
 * Add ramp up and down for storage injection
 * Storage inj should be limited with capacity
 eStorageChargingLimit(y,sto,q,d,t)..
-            vStorageCharging(y,sto,q,d,t) =L=  pCapacity(sto,y);
+            vStorageCharging(y,sto,q,d,t) =L=  pFixedCapacity(sto,y);
             
 eStorageCap(y,sto,q,d,t)..
-            vStorageLevel(y,sto,q,d,t) =L= pStorageData(sto,'StorageDuration')*pCapacity(sto,y);
+            vStorageLevel(y,sto,q,d,t) =L= pStorageData(sto,'StorageDuration')*pFixedCapacity(sto,y);
 
 eStorageBalance(y,sto,q,d,t)$(ord(t)>1)..
             vStorageLevel(y,sto,q,d,t)  =E= vStorageLevel(y,sto,q,d,t-1) + vStorageCharging(y,sto,q,d,t)*pStorageData(sto,'Efficiency') - vGenSupply(y,sto,q,d,t);

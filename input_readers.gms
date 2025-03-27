@@ -55,9 +55,9 @@ $onEmbeddedCode Connect:
 - CSVReader:
     trace: 0
     file: input/firm/pFirmData.csv
-    name: pFirmDatax
+    name: pFirmData
     indexSubstitutions: {.nan: ""}
-    indexColumns: [1,2]
+    indexColumns: [1]
     header: [1]
     type: par
     
@@ -184,9 +184,9 @@ $onEmbeddedCode Connect:
 - CSVReader:
     trace: 0
     file: %pFirmData%
-    name: pFirmDatax
+    name: pFirmData
     indexSubstitutions: {.nan: ""}
-    indexColumns: [1,2]
+    indexColumns: [1]
     header: [1]
     type: par
     
