@@ -10,6 +10,6 @@ pStorageData,gendata/pStorageData.csv
 pDemandProfile,demand/pDemandProfile.csv
 pDemandForecast,demand/pDemandForecastCurrent.csv
 pMinGen,pMinGen.csv
-pScalars,settings/pScalars.csv
+pSettings,settings/pSettings.csv
 pVREgenProfile,availability/pVREProfile.csv
 y,settings/y.csv

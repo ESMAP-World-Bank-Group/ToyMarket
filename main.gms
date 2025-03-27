@@ -60,7 +60,7 @@ $if %SCENARIO% == Cournot $include "%READER_FILE_COURNOT%"
 $gdxIn %GDX_INPUT%
 
 * Loading parameters from the GDX file 
-$load    y, pDuration, gmap, pGenDatax, pStorageData, pFirmData, pDemandProfile, pDemandForecast, pVREgenProfileTech, pAvailability, pMinGen, pFuelPrice, pScalars
+$load    y, pDuration, gmap, pGenDatax, pStorageData, pFirmData, pDemandProfile, pDemandForecast, pVREgenProfileTech, pAvailability, pMinGen, pFuelPrice, pSettings
 
 $gdxIn
 
@@ -123,7 +123,7 @@ pWeightYear(y)$(NOT sFinalYear(y) AND ord(y)>2) = sum(sameas(yy-1,y), yy.val) - 
 pWeightYear(y)$(sFinalYear(y) AND ord(y)>2) = sFinalYear.val - sum(sameas(yy+1,sFinalYear), yy.val);
 
 * Compute the revenue requirement (RR) based on discount rate and the weight of each year.
-pRR(y) = 1/[(1+pScalars("DR"))**(sum(yy$(ord(yy)<ord(y)), pWeightYear(yy)))];
+pRR(y) = 1/[(1+pSettings("DR"))**(sum(yy$(ord(yy)<ord(y)), pWeightYear(yy)))];
 
 
 pFixedDemand(z,y,q,d,t) = pDemandProfile(z,q,d,t) * pDemandForecast(z,'Peak',y);

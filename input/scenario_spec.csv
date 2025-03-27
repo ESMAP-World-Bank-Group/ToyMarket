@@ -10,6 +10,6 @@ pStorageData,,,,,,,,,,,,,
 pDemandProfile,,,,,,,,,,,,,
 pDemandForecast,,,,,demand/sensitivity/pDemandForecastHigh2025.csv,,,,,,demand/sensitivity/pDemandForecastCurrent.csv,demand/sensitivity/pDemandForecastCurrent.csv,demand/sensitivity/pDemandForecastCurrent.csv
 pMinGen,,,,,,,,,,,,,
-pScalars,,,,,,,,,,,,,
+pSettings,,,,,,,,,,,,,
 pVREgenProfile,,,,,,,,,,,,,
 y,,,,,,,,,,,,,

@@ -1,135 +1,30 @@
 
-$ifThenI.READER "%READER%" == CONNECT_CSV
 $log ### reading using Connect and CSV Input
 
-$onEmbeddedCode Connect:
 
-- CSVReader:
-    trace: 0
-    file: input/y.csv
-    name: y
-    indexSubstitutions: {.nan: ""}
-    valueSubstitutions: {0: .nan}
-    indexColumns: [1]
-    type: set
+* SETTINGS
+$if not set pSettings $set pSettings input/settings/pSettings.csv
+$if not set y $set y input/settings/y.csv
+$if not set pDuration $set pDuration input/settings/pDuration.csv
+$if not set pMinGen $set pMinGen input/pMinGen.csv
+$if not set pFuelPrice $set pFuelPrice input/pFuelPrice.csv
 
-        
-- CSVReader:
-    trace: 0
-    file: input/settings/pDuration.csv
-    name: pDuration
-    header: [1]
-    indexColumns: [1, 2]
-    type: par
-    
+* LOAD DATA
+$if not set pDemandForecast $set pDemandForecast input/demand/pDemandForecast.csv
+$if not set pDemandProfile $set pDemandProfile input/demand/pDemandProfile.csv
 
-- CSVReader:
-    trace: 0
-    file: input/gendata/pGenData.csv
-    name: gmap
-    indexSubstitutions: {.nan: ""}
-    valueSubstitutions: {0: .nan}
-    indexColumns: [1,2,3,4,5]
-    type: set
+* GENERATION DATA
+$if not set pGenData $set pGenData input/gendata/pGenData.csv
+$if not set pStorageData $set pStorageData input/gendata/pStorageData.csv
 
-- CSVReader:
-    trace: 0
-    file: input/gendata/pGenData.csv
-    name: pGenDatax
-    indexSubstitutions: {.nan: ""}
-    valueSubstitutions: {0: .nan}
-    indexColumns: [1,2,3,4,5]
-    header: [1]
-    type: par
-    
-- CSVReader:
-    trace: 0
-    file: input/gendata/pStorageData.csv
-    name: pStorageData
-    indexSubstitutions: {.nan: ""}
-    valueSubstitutions: {0: .nan}
-    indexColumns: [1]
-    header: [1]
-    type: par
+* AVAILABILITY
+$if not set pVREgenProfile $set pVREgenProfile input/availability/pVREProfile.csv
+$if not set pAvailability $set pAvailability input/availability/pAvailabilityCurrent.csv
 
-- CSVReader:
-    trace: 0
-    file: input/firm/pFirmData.csv
-    name: pFirmData
-    indexSubstitutions: {.nan: ""}
-    indexColumns: [1]
-    header: [1]
-    type: par
-    
-- CSVReader:
-    trace: 0
-    file: input/demand/pDemandProfile.csv
-    name: pDemandProfile
-    indexSubstitutions: {.nan: ""}
-    valueSubstitutions: {0: .nan}
-    indexColumns: [1,2,3]
-    header: [1]
-    type: par
-    
-- CSVReader:
-    trace: 0
-    file: input/demand/pDemandForecast.csv
-    name: pDemandForecast
-    indexSubstitutions: {.nan: ""}
-    valueSubstitutions: {0: .nan}
-    indexColumns: [1,2]
-    header: [1]
-    type: par
-    
-- CSVReader:
-    trace: 0
-    file: input/availability/pVREProfile.csv
-    name: pVREgenProfileTech
-    indexColumns: [1,2,3,4]
-    header: [1]
-    type: par
-    
-    
-- CSVReader:
-    trace: 0
-    file: input/availability/pAvailability.csv
-    name: pAvailability
-    indexColumns: [1]
-    header: [1]
-    type: par
-    
-- CSVReader:
-    trace: 0
-    file: input/pMinGen.csv
-    name: pMinGen
-    indexColumns: [1]
-    header: [1]
-    type: par
 
-- CSVReader:
-    trace: 0
-    file: input/pFuelPrice.csv
-    name: pFuelPrice
-    indexColumns: [1]
-    header: [1]
-    type: par
-    
-- CSVReader:
-    trace: 0
-    file: input/settings/pScalars.csv
-    name: pScalars
-    indexColumns: [1]
-    valueColumns: [2]
-    type: par
-    
+* FIRM DATA
+$if not set pFirmData $set pFirmData input/firm/pFirmData.csv
 
-- GDXWriter:
-    file: %GDX_INPUT%.gdx
-    symbols: all
-$offEmbeddedCode
-
-$elseIfI.READER %READER% == CONNECT_CSV_PYTHON
-$log ### reading using Connect and CSV Input with Python
 
 $onEmbeddedCode Connect:
 
@@ -246,8 +141,8 @@ $onEmbeddedCode Connect:
     
 - CSVReader:
     trace: 0
-    file: %pScalars%
-    name: pScalars
+    file: %pSettings%
+    name: pSettings
     indexColumns: [1]
     valueColumns: [2]
     type: par
@@ -258,6 +153,3 @@ $onEmbeddedCode Connect:
     symbols: all
 $offEmbeddedCode
 
-$else.READER
-$abort 'No valid READER specified. Allowed are GDXXRW and CONNECT.'
-$endif.READER

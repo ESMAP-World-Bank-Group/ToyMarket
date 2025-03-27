@@ -76,7 +76,7 @@ pVREgenProfileTech(z,tech,q,d,t) 'VRE generation profile by hour and tech -- nor
 pVREgenProfile(q,d,t,g)         'VRE generation profile by hour -- normalized (per MW of solar and wind capacity)'
 pAvailability(g,q)               'Availability by generation type and season or quarter in percentage'
 pMinGen(i,q)                     'Minimum generation by firm per season in percentage'
-pScalars(*)                      'Parameter with scalars'
+pSettings(*)                      'Parameter with scalars'
  
 
 pRR(y)                          'Discount rate'
@@ -157,7 +157,7 @@ ePrice(z,y,q,d,t)..
             vPrice(z,y,q,d,t) =E= A(z,y,q,d,t)-B(z,y,q,d,t)*(vSupplyMarket(z,y,q,d,t)) ;
             
 ePriceCap(z,y,q,d,t)..
-            vPrice(z,y,q,d,t) =L= pScalars('PriceCap') ;
+            vPrice(z,y,q,d,t) =L= pSettings('PriceCap') ;
             
 
 eMinGen(i,y,q)$(pMinGen(i,q))..
@@ -196,7 +196,7 @@ eStorageBalance1(y,sto,q,d,t)$(ord(t)=1)..
 eObjFunFixedDemand..
             vObjVal =E=
             - sum((y,g,q,d,t), pWeightYear(y) * pRR(y) * pDuration(q,d,t) * pVarCost(g,y)*vGenSupply(y,g,q,d,t))
-            - pScalars('VOLL') * sum((z,y,q,d,t),pWeightYear(y) * pRR(y) * pDuration(q,d,t) * vUnmetDemand(z,y,q,d,t))
+            - pSettings('VOLL') * sum((z,y,q,d,t),pWeightYear(y) * pRR(y) * pDuration(q,d,t) * vUnmetDemand(z,y,q,d,t))
             ;
             
 

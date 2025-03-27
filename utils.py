@@ -388,7 +388,7 @@ def estimate_hourly_contracting(pSupplyFirm, pFirmData, folder, scenario):
 
 def load_additional_data(scenario):
     """Gets additional data required."""
-    pScalars = pd.read_csv(scenario['pScalars'], index_col=0)
+    pScalars = pd.read_csv(scenario['pSettings'], index_col=0)
     elasticity = pScalars.loc['elasticity', 'Value']
     additional_data = {
         'elasticity': elasticity
