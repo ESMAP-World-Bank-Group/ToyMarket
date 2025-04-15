@@ -83,7 +83,7 @@ def process_outputs(epm_results, scenarios_rename=None, keys=None, folder=None, 
                       'istatus': 'firmstatus'}
     if keys is None:
         keys = ['pPrice', 'pDemand', 'pSupplyFirm', 'pGenSupply', 'pDispatch', 'pSupplyFirm', 'pPlantCapacity', 'pCapacity',
-                'gfmap', 'gimap', 'gtechmap', 'pVarCost', 'pFirmData', 'istatusmap']
+                'gfmap', 'gimap', 'gtechmap', 'gzmap', 'pVarCost', 'pFirmData', 'istatusmap']
     epm_dict = {k: i.rename(columns=rename_columns) for k, i in epm_results.items() if
                 k in keys and k in epm_results.keys()}
 
@@ -205,37 +205,38 @@ def process_additional_dataframe(epm_results, folder, scenarios_rename=None):
     pDuration_reshaped =pDuration_df.set_index(['season', 'day', 'scenario']).stack().reset_index().rename(columns={'level_3': 't', 0: 'nb_hours'})
 
     # Energy information
-    pEnergyByGenerator = epm_results['pGenSupply'].copy().merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
+    gensupply_with_zone = epm_results['pGenSupply'].copy().merge(epm_results['gzmap'], on=['scenario', 'generator'], how='left')
+    pEnergyByGenerator = gensupply_with_zone.merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['value'] * df['nb_hours']
-    ).groupby(['scenario', 'competition', 'year', 'generator'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
-    pEnergyByGeneratorAndSeason = epm_results['pGenSupply'].copy().merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
+    ).groupby(['scenario', 'competition', 'zone', 'year', 'generator'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
+    pEnergyByGeneratorAndSeason = gensupply_with_zone.merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['value'] * df['nb_hours']
-    ).groupby(['scenario', 'competition', 'year', 'season', 'generator'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
+    ).groupby(['scenario', 'competition', 'zone', 'year', 'season', 'generator'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
 
     pEnergyByFirm = epm_results['pSupplyFirm'].copy().merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['value'] * df['nb_hours']
-    ).groupby(['scenario', 'competition', 'year', 'firm'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
+    ).groupby(['scenario', 'competition', 'zone', 'year', 'firm'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
     pEnergyByFirmAndSeason = epm_results['pSupplyFirm'].copy().merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['value'] * df['nb_hours']
-    ).groupby(['scenario', 'competition', 'year', 'season', 'firm'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
+    ).groupby(['scenario', 'competition', 'zone', 'year', 'season', 'firm'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
 
-    pEnergyByFuel = epm_results['pGenSupply'].copy().merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
+    pEnergyByFuel = gensupply_with_zone.merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
     pEnergyByFuel = pEnergyByFuel.merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['value'] * df['nb_hours']
-    ).groupby(['scenario', 'competition', 'year', 'fuel'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
+    ).groupby(['scenario', 'competition', 'zone', 'year', 'fuel'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
 
-    pEnergyByFuelDispatch = epm_results['pGenSupply'].copy().merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
-    pEnergyByFuelDispatch = pEnergyByFuelDispatch.groupby(['scenario', 'competition', 'year', 'season', 'day', 't', 'fuel'], observed=False)['value'].sum().reset_index()
+    pEnergyByFuelDispatch = gensupply_with_zone.merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
+    pEnergyByFuelDispatch = pEnergyByFuelDispatch.groupby(['scenario', 'competition', 'zone', 'year', 'season', 'day', 't', 'fuel'], observed=False)['value'].sum().reset_index()
 
-    pEnergyByTech = epm_results['pGenSupply'].copy().merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
+    pEnergyByTech = gensupply_with_zone.merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
     pEnergyByTech = pEnergyByTech.merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['value'] * df['nb_hours']
-    ).groupby(['scenario', 'competition', 'year', 'tech'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
+    ).groupby(['scenario', 'competition', 'zone', 'year', 'tech'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
 
-    pEnergyByTechDispatch = epm_results['pGenSupply'].copy().merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
-    pEnergyByTechDispatch = pEnergyByTechDispatch.groupby(['scenario', 'competition', 'year', 'season', 'day', 't', 'tech'], observed=False)['value'].sum().reset_index()
+    pEnergyByTechDispatch = gensupply_with_zone.merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
+    pEnergyByTechDispatch = pEnergyByTechDispatch.groupby(['scenario', 'competition', 'zone', 'year', 'season', 'day', 't', 'tech'], observed=False)['value'].sum().reset_index()
 
-    pEnergyFullDispatch = epm_results['pGenSupply'].copy().merge(epm_results['pVarCost'], on=['scenario', 'generator', 'year'], how='left').rename(columns={'value_x': 'generation', 'value_y': 'VarCost'})
+    pEnergyFullDispatch = gensupply_with_zone.merge(epm_results['pVarCost'], on=['scenario', 'generator', 'year'], how='left').rename(columns={'value_x': 'generation', 'value_y': 'VarCost'})
     pEnergyFullDispatch = pEnergyFullDispatch.merge(epm_results['gfmap'], on=['scenario', 'generator'], how='left')
     pEnergyFullDispatch = pEnergyFullDispatch.merge(epm_results['gtechmap'], on=['scenario', 'generator'], how='left')
     pEnergyFullDispatch = pEnergyFullDispatch.merge(epm_results['gimap'], on=['scenario', 'generator'], how='left')
@@ -246,13 +247,13 @@ def process_additional_dataframe(epm_results, folder, scenarios_rename=None):
 
     pEnergyFull = pEnergyFullDispatch.merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         generation=lambda df: df['generation'] * df['nb_hours']
-    ).groupby(['scenario', 'competition', 'year', 'fuel', 'tech', 'firm', 'firmstatus'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
+    ).groupby(['scenario', 'competition', 'zone', 'year', 'fuel', 'tech', 'firm', 'firmstatus'], observed=False)['generation'].sum().reset_index().rename(columns={'generation': 'value'})
 
-    pPlantCapacityFactor = epm_results['pGenSupply'].copy()
+    pPlantCapacityFactor = gensupply_with_zone.copy()
     pPlantCapacityFactor = pPlantCapacityFactor.merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left')
     pPlantCapacityFactor.loc[:, 'generation'] = pPlantCapacityFactor.loc[:, 'value'] * pPlantCapacityFactor.loc[:, 'nb_hours']
 
-    pPlantCapacityFactor = pPlantCapacityFactor.groupby(['scenario', 'competition', 'generator', 'season'])[
+    pPlantCapacityFactor = pPlantCapacityFactor.groupby(['scenario', 'competition', 'zone', 'generator', 'season'])[
         'generation'].sum().reset_index()
     # pPlantCapacityFactor = pPlantCapacityFactor.merge(pGenData[['generator', 'Capacity']], on='generator', how='left')
     pPlantCapacityFactor = pPlantCapacityFactor.merge(pGenData_df, on=['generator', 'scenario'], how='left')
@@ -262,8 +263,19 @@ def process_additional_dataframe(epm_results, folder, scenarios_rename=None):
     # Demand data
     pDemandTotal = epm_results['pDemand'].copy().merge(pDuration_reshaped, on=['season', 'day', 't', 'scenario'], how='left').assign(
         demand=lambda df: df['value'] * df['nb_hours']
-    ).groupby(['scenario', 'competition', 'year'], observed=False)['demand'].sum().reset_index().rename(columns={'demand': 'value'})
+    ).groupby(['scenario', 'competition', 'zone', 'year'], observed=False)['demand'].sum().reset_index().rename(columns={'demand': 'value'})
 
+    # Price information
+    pPrice = epm_results['pPrice'].copy()
+    pPriceWeighted = pPrice.rename(columns={'value': 'price'}).merge(
+        epm_results['pDemand'].rename(columns={'value': 'demand'}), on=['scenario', 'competition', 'zone', 'year', 'season', 'day', 't'],
+    how='left')
+    pPriceWeighted = (
+        pPriceWeighted
+        .groupby(['scenario', 'competition', 'year', 'season', 'day', 't'])
+        .apply(lambda x: (x['price'] * x['demand']).sum() / x['demand'].sum())
+        .reset_index(name='weighted_price')
+    )
 
     additional_df = {
         'pEnergyByGenerator': pEnergyByGenerator,
@@ -277,7 +289,8 @@ def process_additional_dataframe(epm_results, folder, scenarios_rename=None):
         'pEnergyFullDispatch': pEnergyFullDispatch,
         'pEnergyFull': pEnergyFull,
         'pPlantCapacityFactor': pPlantCapacityFactor,
-        'pDemandTotal': pDemandTotal
+        'pDemandTotal': pDemandTotal,
+        'pPriceWeighted': pPriceWeighted
     }
 
     for key, item in additional_df.items():
@@ -465,6 +478,36 @@ def prepare_data_for_cournot(d, scenario, additional_data, folder, contract):
     return scenario
 
 def get_duration_curve(value_df, duration_df):
+    """
+    Generate a duration curve by expanding time slices using weights from the duration_df
+    and sorting the values within each scenario and competition group.
+
+    Parameters
+    ----------
+    value_df : pandas.DataFrame
+        A DataFrame containing at least the following columns:
+        - 'scenario': scenario name
+        - 'competition': competition identifier
+        - 'season', 'day', 't': indices for time slice
+        - 'value': numerical value (e.g., price, dispatch)
+
+    duration_df : pandas.DataFrame
+        A multi-index DataFrame (with levels ['season', 'day', 't']) containing a single value per cell,
+        representing the weight (e.g., number of hours) of each time slice.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame where each original value has been repeated according to its duration weight,
+        sorted in descending order of 'value' within each ['scenario', 'competition'] group,
+        and annotated with an 'hour' index (from 0 to N-1) indicating its position in the sorted curve.
+
+    Notes
+    -----
+    This function is used to build duration curves (e.g., load duration, price duration, etc.)
+    from time-slice-based model outputs. The result is useful for visualizing distributions
+    over a representative year, accounting for the relative frequency (duration) of each time slice.
+    """
     value_df = value_df.copy()
 
     # Reshape duration to merge properly
@@ -482,7 +525,7 @@ def get_duration_curve(value_df, duration_df):
         return expanded_df
 
     # Apply function per group
-    expanded_value_df = value_df.groupby(['scenario', 'competition'], group_keys=False).apply(expand_group)
+    expanded_value_df = value_df.groupby(['scenario', 'competition', 'zone'], group_keys=False).apply(expand_group)
     return expanded_value_df
 
 

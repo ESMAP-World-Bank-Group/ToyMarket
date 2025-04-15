@@ -18,6 +18,7 @@ PARAMETER
         pDispatch(s,z,y,q,d,t,*)                'Dispatch information, including unserved demand.'
         pPlantCapacity(s,g,y)                   'Plant capacity'
         pCapacity(s,f,y)                        'Fuel capacity'
+        pTrade(s,z,z2,y,q,d,t)                  'Trade between zones'
              
 ;
 
@@ -56,6 +57,8 @@ $endIf
 
 pDispatch("%SCENARIO%",z,y,q,d,t,"Imports") =      sum(sTopology(z,z2), vFlow.l(z2,z,y,q,d,t)) ;
 pDispatch("%SCENARIO%",z,y,q,d,t,"Exports") =   - sum(sTopology(z,z2), vFlow.l(z,z2,y,q,d,t));
+
+pTrade("%SCENARIO%",sTopology(z,z2),y,q,d,t) = vFlow.L(z,z2,y,q,d,t);
 
 
 *

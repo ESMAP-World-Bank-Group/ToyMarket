@@ -123,10 +123,8 @@ def launch_market(scenario,
 
     subprocess.run(command, cwd=cwd)
 
-    # TODO: create new scenario config file for cournot, that includes additional files
     scenario_cournot = scenario.copy()
 
-    # TODO: extract_perfect_competition(path) with path = cwd, ResultsPerfectCompetition.gdx for gdx
     results_perfect_competition = extract_perfect_competition(cwd)
     additional_data = load_additional_data(scenario)
     scenario_cournot = prepare_data_for_cournot(results_perfect_competition, scenario_cournot, additional_data, folder=cwd, contract='firm')
@@ -260,7 +258,9 @@ if __name__ == '__main__':
                                      # selected_scenarios=['baseline', 'Contract1', 'Contract0p8', 'EskomDifferentiate', 'CoalDifferentiate', 'LowAvailability', 'FullDifferentiate'],
                                      # selected_scenarios=['baseline', 'Contract1', 'FullDifferentiate', 'FullDifferentiateNoContract', 'EskomDifferentiate'],
                                      # selected_scenarios=['baseline', 'Current', 'Current2026', 'CurrentFullAvail'],
-                                     selected_scenarios=['TransmissionInfinite'],
-                                     # removed_scenarios=['TransmissionInfinite'],
+                                     # selected_scenarios=['TwoZoneNoTransmission', 'TwoZone5000', 'TwoZone10000', 'TwoZone15000', 'TwoZone'],
+                                     # selected_scenarios=['TwoZoneNoTransmission_2030', 'TwoZone5000_2030', 'TwoZone10000_2030', 'TwoZone15000_2030', 'TwoZone2030'],
+                                     selected_scenarios=['baseline'],
+                                     # removed_scenarios=['baseline', 'TransmissionInfinite', 'TransmissionMultiZone', 'TwoZone2027'],
                                      cpu=1, path_gams=None,
                                      path_engine_file=None)

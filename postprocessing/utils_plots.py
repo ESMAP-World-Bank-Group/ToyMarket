@@ -204,12 +204,19 @@ def make_stacked_bar_subplots(df, filename, dict_colors, figsize=(10,6), selecte
             df[key] = df[key].replace(grouping)  # case-specific, according to level of preciseness for dispatch plot
 
     if column_subplots is not None:
-        df = (df.groupby([column_subplots, column_stacked, column_multiple_bars], observed=False)[
-                  column_value].sum().reset_index())
-        df = df.set_index([column_stacked, column_multiple_bars, column_subplots]).squeeze().unstack(column_subplots)
+        if column_stacked is not None:
+            df = (df.groupby([column_subplots, column_stacked, column_multiple_bars], observed=False)[column_value].sum().reset_index())
+            df = df.set_index([column_stacked, column_multiple_bars, column_subplots]).squeeze().unstack(column_subplots)
+        else:
+            df = (df.groupby([column_subplots, column_multiple_bars], observed=False)[column_value].sum().reset_index())
+            df = df.set_index([column_multiple_bars, column_subplots]).squeeze().unstack(column_subplots)
     else:  # no subplots in this case
-        df = (df.groupby([column_stacked, column_multiple_bars], observed=False)[column_value].sum().reset_index())
-        df = df.set_index([column_stacked, column_multiple_bars])
+        if column_stacked is not None:
+            df = (df.groupby([column_stacked, column_multiple_bars], observed=False)[column_value].sum().reset_index())
+            df = df.set_index([column_stacked, column_multiple_bars])
+        else:
+            df = (df.groupby([column_multiple_bars], observed=False)[column_value].sum().reset_index())
+            df = df.set_index([column_multiple_bars])
 
     if select_xaxis is not None:
         df = df.loc[:, [i for i in df.columns if i in select_xaxis]]
@@ -294,7 +301,10 @@ def stacked_bar_subplot(df, column_group, filename, dict_colors=None, figsize=(1
         ax = axes[k]
 
         try:
-            df_temp = df[key].unstack(column_group)
+            if column_group is not None:
+                df_temp = df[key].unstack(column_group)
+            else:
+                df_temp = df[key].to_frame()
 
             if key == year_ini:
                 df_temp = df_temp.iloc[0, :]
@@ -393,7 +403,7 @@ def make_multiple_lines_subplots(df, filename, dict_colors, selected_zone=None, 
                               dict_scenarios=None, figsize=(10,6),
                               format_y=lambda y, _: '{:.0f} MW'.format(y),  annotation_format="{:.0f}",
                               order_stacked=None, max_ticks=10, annotate=True,
-                              show_total=False, fonttick=12, rotation=0, title=None):
+                              show_total=False, fonttick=12, rotation=0, title=None, ylim_bottom=None):
     """
     Subplots with stacked bars. Can be used to explore the evolution of capacity over time and across scenarios.
 
@@ -461,13 +471,13 @@ def make_multiple_lines_subplots(df, filename, dict_colors, selected_zone=None, 
     multiple_lines_subplot(df, column_multiple_lines, filename, figsize=figsize, dict_colors=dict_colors,  format_y=format_y,
                            annotation_format=annotation_format,  rotation=rotation, order_scenarios=order_scenarios, dict_scenarios=dict_scenarios,
                            order_columns=order_stacked, max_ticks=max_ticks, annotate=annotate, show_total=show_total,
-                           fonttick=fonttick, title=title)
+                           fonttick=fonttick, title=title, ylim_bottom=ylim_bottom)
 
 
 def multiple_lines_subplot(df, column_multiple_lines, filename, figsize=(10,6), dict_colors=None, order_scenarios=None,
                             order_columns=None, dict_scenarios=None, rotation=0, fonttick=14, legend=True,
                            format_y=lambda y, _: '{:.0f} GW'.format(y), annotation_format="{:.0f}",
-                           max_ticks=10, annotate=True, show_total=False, title=None):
+                           max_ticks=10, annotate=True, show_total=False, title=None, ylim_bottom=None):
     """
     Create a stacked bar subplot from a DataFrame.
     Parameters
@@ -523,6 +533,7 @@ def multiple_lines_subplot(df, column_multiple_lines, filename, figsize=(10,6), 
     else:
         axes = np.array(axes).flatten()  # Ensure it's always a 1D array
 
+    y_max = df.max().max()
 
     handles, labels = None, None
     for k, key in enumerate(list_keys):
@@ -577,8 +588,13 @@ def multiple_lines_subplot(df, column_multiple_lines, filename, figsize=(10,6), 
                 ax.tick_params(axis='y', which='both', left=False, labelleft=False)
             ax.get_legend().remove()
 
-            # Add a horizontal line at 0
-            ax.axhline(0, color='black', linewidth=0.5)
+            # # Add a horizontal line at 0
+            # ax.axhline(0, color='black', linewidth=0.5)
+
+            if ylim_bottom is not None:
+                ax.set_ylim(bottom=ylim_bottom, top=y_max * 1.1)
+            else:
+                ax.set_ylim(0, top=y_max * 1.1)
 
         except IndexError:
             ax.axis('off')
@@ -1294,8 +1310,8 @@ def plot_pie_on_ax(ax, df, index, share_column, percent_cap, colors, title, radi
     return handles, labels
 
 
-def make_automatic_plots(epm_results, zone, dict_specs, folder, scenarios_to_remove = None):
-
+def make_automatic_plots(epm_results, dict_specs, folder, scenarios_to_remove = None):
+    # TODO: adapt to multizone
     # Price plot
     if not (Path(folder) / Path('images')).is_dir():
         os.mkdir(Path(folder) / Path('images'))
@@ -1306,27 +1322,45 @@ def make_automatic_plots(epm_results, zone, dict_specs, folder, scenarios_to_rem
     df["day_hour"] = df["day"].astype(str) + " - " + df["hour"]
     df["season_day_hour"] = df["season"].astype(str) + " - " + df["day"].astype(str) + " - " + df["hour"]
 
-    if 'baseline' in df.scenario.unique():
-        df.loc[(df.scenario == 'baseline') & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
-    elif 'Baseline' in df.scenario.unique():
-        df.loc[(df.scenario == 'Baseline') & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
+    if len(df.zone.unique()) == 1:
+
+        if 'baseline' in df.scenario.unique():
+            df.loc[(df.scenario == 'baseline') & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
+        elif 'Baseline' in df.scenario.unique():
+            df.loc[(df.scenario == 'Baseline') & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
+        else:
+            df.loc[
+                (df.scenario == df.scenario.unique()[0]) & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
+
+        df = df[~((df["scenario"] != "Least-cost") & (df["competition"] == "Least-cost"))]
+
+        df = df.drop(columns=['competition'])
+
+        if scenarios_to_remove is not None:
+            df = df[~df["scenario"].isin(scenarios_to_remove)]
+
+        filename = Path(folder) / Path('images') / Path('prices.png')
+
+        make_multiple_lines_subplots(df, filename, dict_colors=None, figsize=(6, 6), column_subplots=None,
+                                     column_xaxis='season_day_hour',
+                                     column_value='value', column_multiple_lines='scenario',
+                                     format_y=lambda y, _: '{:.0f} US$ /MWh'.format(y), annotation_format="{:.0f}",
+                                     max_ticks=10, rotation=45)
+
     else:
-        df.loc[(df.scenario ==df.scenario.unique()[0]) & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
 
-    df = df[~((df["scenario"] != "Least-cost") & (df["competition"] == "Least-cost"))]
+        for scenario in df.scenario.unique():
+            filename = Path(folder) / Path('images') / Path(f'prices_{scenario}.png')
 
-    df = df.drop(columns=['competition'])
+            df_scenario = df.loc[df.scenario == scenario].copy()
+            df_scenario = df_scenario.drop(columns=['scenario'])
+            df_scenario = df_scenario.loc[(df_scenario.season.isin(['Q1', 'Q2', 'Q3', 'Q4']))]
 
-    if scenarios_to_remove is not None:
-        df = df[~df["scenario"].isin(scenarios_to_remove)]
-
-    filename = Path(folder) / Path('images') / Path('prices.png')
-
-    make_multiple_lines_subplots(df, filename, dict_colors=None, figsize=(6, 6), column_subplots=None,
-                                 column_xaxis='season_day_hour',
-                                 column_value='value', column_multiple_lines='scenario',
-                                 format_y=lambda y, _: '{:.0f} US$ /MWh'.format(y), annotation_format="{:.0f}",
-                                 max_ticks=10, rotation=45)
+            make_multiple_lines_subplots(df_scenario, filename, dict_colors=None, figsize=(6, 6), column_subplots='zone',
+                                         column_xaxis='season_day_hour', column_value='value',
+                                         column_multiple_lines='competition',
+                                         format_y=lambda y, _: '{:.0f} US$ /MWh'.format(y),
+                                         annotation_format="{:.0f}", max_ticks=10, rotation=45, ylim_bottom=40)
 
     # Price duration curves plots
 
@@ -1357,11 +1391,19 @@ def make_automatic_plots(epm_results, zone, dict_specs, folder, scenarios_to_rem
 
     filename = Path(folder) / Path('images') / Path('price_duration_curve.png')
 
-    make_multiple_lines_subplots(expanded_price, filename, None, column_subplots=None, column_xaxis='hour',
-                                 column_value='value', column_multiple_lines='scenario',
-                                 format_y=lambda y, _: '{:.0f} US$ /MWh'.format(y), annotation_format="{:.0f}",
-                                 max_ticks=10, rotation=45, figsize=(6, 6))
+    if len(df.zone.unique()) == 1:  # single zone
 
+        make_multiple_lines_subplots(expanded_price, filename, None, column_subplots=None, column_xaxis='hour',
+                                     column_value='value', column_multiple_lines='scenario',
+                                     format_y=lambda y, _: '{:.0f} US$ /MWh'.format(y), annotation_format="{:.0f}",
+                                     max_ticks=10, rotation=45, figsize=(6, 6))
+
+    else:  # multi zone
+
+        make_multiple_lines_subplots(expanded_price, filename, None, column_subplots='zone', column_xaxis='hour',
+                                     column_value='value', column_multiple_lines='scenario',
+                                     format_y=lambda y, _: '{:.0f} US$ /MWh'.format(y), annotation_format="{:.0f}",
+                                     max_ticks=10, rotation=45, figsize=(6, 6))
     # Energy by fuel subplot
 
     df = epm_results['pEnergyByFuel'].copy()
@@ -1381,7 +1423,7 @@ def make_automatic_plots(epm_results, zone, dict_specs, folder, scenarios_to_rem
     df = epm_results['pEnergyByFuel'].copy()
     df['value'] = df['value'] / 1e6
 
-    df.loc[(df.scenario == 'baseline') & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'
+    df.loc[(df.scenario == 'baseline') & (df.competition == 'Least-cost'), 'scenario'] = 'Least-cost'  # reference Least-cost
 
     df = df[~((df["scenario"] != "Least-cost") & (df["competition"] == "Least-cost"))]
 
@@ -1412,19 +1454,19 @@ def make_automatic_plots(epm_results, zone, dict_specs, folder, scenarios_to_rem
     for selected_scenario in dispatch_df.scenario.unique():
         for competition in ['Least-cost', 'Cournot']:
             for year in (dispatch_df.loc[dispatch_df.scenario == selected_scenario].groupby("year").filter(lambda x: x["value"].sum() > 0)).year.unique():
-                for season in dispatch_df.loc[dispatch_df.scenario == selected_scenario].season.unique():
+                for zone in dispatch_df.loc[dispatch_df.scenario == selected_scenario].zone.unique():
 
                     select_time = {
-                        'season': [season],
+                        'season': dispatch_df.loc[dispatch_df.scenario == selected_scenario].season.unique(),
                         'day': ['d1', 'd2', 'd3', 'd4', 'd5']
                     }
 
-                    filename = Path(folder) / Path('images') / Path('dispatch') / Path(f'dispatch_{selected_scenario}_{competition}_{year}_{season}.png')
+                    filename = Path(folder) / Path('images') / Path('dispatch') / Path(f'dispatch_{selected_scenario}_{competition}_{year}_{zone}.png')
 
                     make_complete_fuel_dispatch_plot(dfs_to_plot_area, dfs_to_plot_line, dict_colors=dict_specs['colors'],
                                                      year=year, scenario=selected_scenario, competition=competition, zone=zone,
                                                      fuel_grouping=None, select_time=select_time, filename=filename,
                                                      reorder_dispatch=['Solar', 'Concentrated Solar', 'Hydro', 'Nuclear', 'Coal', 'Gas',
                                                                        'Oil'],
-                                                     figsize=(10, 4))
+                                                     figsize=(16, 4))
 
