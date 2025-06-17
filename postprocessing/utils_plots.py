@@ -8,7 +8,7 @@ from itertools import cycle
 import plotly.express as px
 import plotly.graph_objects as go
 import seaborn as sns
-from utils import get_duration_curve, filter_dataframe
+from utils import *
 # import ipywidgets as widgets
 # from IPython.display import display
 
@@ -1339,7 +1339,7 @@ def make_automatic_plots(epm_results, dict_specs, folder, scenarios_to_remove = 
         if scenarios_to_remove is not None:
             df = df[~df["scenario"].isin(scenarios_to_remove)]
 
-        filename = Path(folder) / Path('images') / Path('prices.png')
+        filename = Path(folder) / Path('prices.png')
 
         make_multiple_lines_subplots(df, filename, dict_colors=None, figsize=(6, 6), column_subplots=None,
                                      column_xaxis='season_day_hour',
@@ -1350,7 +1350,7 @@ def make_automatic_plots(epm_results, dict_specs, folder, scenarios_to_remove = 
     else:
 
         for scenario in df.scenario.unique():
-            filename = Path(folder) / Path('images') / Path(f'prices_{scenario}.png')
+            filename = Path(folder) / Path(f'prices_{scenario}.png')
 
             df_scenario = df.loc[df.scenario == scenario].copy()
             df_scenario = df_scenario.drop(columns=['scenario'])
@@ -1389,7 +1389,7 @@ def make_automatic_plots(epm_results, dict_specs, folder, scenarios_to_remove = 
 
     expanded_price = get_duration_curve(df, pDuration)
 
-    filename = Path(folder) / Path('images') / Path('price_duration_curve.png')
+    filename = Path(folder) / Path('price_duration_curve.png')
 
     if len(df.zone.unique()) == 1:  # single zone
 
@@ -1412,7 +1412,7 @@ def make_automatic_plots(epm_results, dict_specs, folder, scenarios_to_remove = 
     if scenarios_to_remove is not None:
         df = df[~df["scenario"].isin(scenarios_to_remove)]
 
-    filename = Path(folder) / Path('images') / Path('energy_subplots.png')
+    filename = Path(folder) / Path('energy_subplots.png')
     make_stacked_bar_subplots(df, filename, dict_specs['colors'], column_stacked='fuel', column_subplots='scenario',
                               column_value='value', column_multiple_bars='competition',
                               format_y=lambda y, _: '{:.0f} TWh'.format(y), annotation_format="{:.0f}", cap=5,
@@ -1429,15 +1429,15 @@ def make_automatic_plots(epm_results, dict_specs, folder, scenarios_to_remove = 
 
     df = df.drop(columns=['competition'])
 
-    filename = Path(folder) / Path('images') / Path('energy.png')
+    filename = Path(folder) / Path('energy.png')
     make_stacked_bar_subplots(df, filename, dict_specs['colors'], column_stacked='fuel', column_subplots=None,
                               column_value='value', column_multiple_bars='scenario',
                               format_y=lambda y, _: '{:.0f} TWh'.format(y), annotation_format="{:.0f}", cap=5,
                               show_total=True)
 
     # Dispatch plots
-    if not (Path(folder) / Path('images') / Path('dispatch')).is_dir():
-        os.mkdir(Path(folder) / Path('images') / Path('dispatch'))
+    if not (Path(folder) / Path('dispatch')).is_dir():
+        os.mkdir(Path(folder) / Path('dispatch'))
 
     dispatch_df = epm_results['pEnergyByFuelDispatch'].copy()
     dispatch_df['fuel'] = dispatch_df['fuel'].replace({'Uranium': 'Nuclear'})
@@ -1461,7 +1461,7 @@ def make_automatic_plots(epm_results, dict_specs, folder, scenarios_to_remove = 
                         'day': ['d1', 'd2', 'd3', 'd4', 'd5']
                     }
 
-                    filename = Path(folder) / Path('images') / Path('dispatch') / Path(f'dispatch_{selected_scenario}_{competition}_{year}_{zone}.png')
+                    filename = Path(folder) / Path('dispatch') / Path(f'dispatch_{selected_scenario}_{competition}_{year}_{zone}.png')
 
                     make_complete_fuel_dispatch_plot(dfs_to_plot_area, dfs_to_plot_line, dict_colors=dict_specs['colors'],
                                                      year=year, scenario=selected_scenario, competition=competition, zone=zone,
@@ -1470,3 +1470,86 @@ def make_automatic_plots(epm_results, dict_specs, folder, scenarios_to_remove = 
                                                                        'Oil'],
                                                      figsize=(16, 4))
 
+
+def make_automatic_plots_multizone(epm_results, folder):
+    # Prices
+    df = epm_results['pPrice'].copy()
+    df["hour"] = df["t"].str.extract(r"(\d+)").astype(int).astype(str) + "h"
+
+    df["day_hour"] = df["day"].astype(str) + " - " + df["hour"]
+    df["season_day_hour"] = df["season"].astype(str) + " - " + df["day"].astype(str) + " - " + df["hour"]
+
+    for scenario in df.scenario.unique():
+        df_scenario = df.loc[df.scenario == scenario]
+        df_scenario = df_scenario.drop(columns=['scenario'])
+        df_scenario = df_scenario.loc[(df_scenario.season.isin(['Q1', 'Q2', 'Q3', 'Q4']))]
+
+        filename = Path(folder) / Path(f'prices_{scenario}.png')
+
+        make_multiple_lines_subplots(df_scenario, filename, dict_colors=None, figsize=(6, 6), column_subplots='zone',
+                                     column_xaxis='season_day_hour', column_value='value',
+                                     column_multiple_lines='competition', format_y=lambda y, _: '{:.0f} US$ /MWh'.format(y),
+                                     annotation_format="{:.0f}", max_ticks=10, rotation=45, ylim_bottom=40)
+
+    # Demand and supply
+    df_demand = epm_results['pDemandTotal'].copy()
+    df_demand = df_demand.groupby(['scenario', 'competition', 'zone', 'year'])['value'].sum().reset_index()
+    df_demand['value'] = df_demand['value'] * 1e-6
+    df_demand = df_demand.rename(columns={'value': 'demand'})
+
+    df_prod = epm_results['pEnergyByFuel'].copy()
+    df_prod = df_prod.groupby(['scenario', 'competition', 'zone', 'year'])['value'].sum().reset_index()
+    df_prod['value'] = df_prod['value'] * 1e-6
+    df_prod = df_prod.rename(columns={'value': 'production'})
+
+    df_tot = df_demand.merge(df_prod, on=['scenario', 'competition', 'zone', 'year'])
+    df_tot = df_tot.set_index(['scenario', 'competition', 'zone', 'year']).stack().to_frame().rename(
+        columns={0: 'value'}).reset_index().rename(columns={'level_4': 'attribute'})
+
+    for scenario in df_tot.scenario.unique():
+        for competition in df_tot.competition.unique():
+
+            df_tot_subset = df_tot.loc[(df_tot.scenario == scenario) & (df_tot.competition == competition)]
+
+            filename = Path(folder) / Path(f'demand_supply_{scenario}_{competition}.png')
+            make_stacked_bar_subplots(df_tot_subset, filename, dict_colors=None, column_stacked=None, column_subplots='zone',
+                                      column_value='value', column_multiple_bars='attribute', annotate=False,
+                                      format_y=lambda y, _: '{:.0f} TWh'.format(y), annotation_format="{:.0f}", cap=5,
+                                      show_total=True,
+                                      figsize=(8, 6))
+
+
+
+def path_to_extract_results(folder):
+    if 'postprocessing' in os.getcwd():  # code is launched from postprocessing folder
+        assert 'output' not in folder, 'folder name is not specified correctly'
+        RESULTS_FOLDER = Path(os.path.join('..', 'output', folder))
+    else:  # code is launched from main root
+        if 'output' not in folder:
+            RESULTS_FOLDER = Path(os.path.join('output', folder))
+        else:
+            RESULTS_FOLDER = Path(folder)
+    return RESULTS_FOLDER
+
+
+def process_simulation_results(folder, graphs_folder='img'):
+    RESULTS_FOLDER = path_to_extract_results(folder)
+    GRAPHS_FOLDER = os.path.join(RESULTS_FOLDER, graphs_folder)
+    if not os.path.exists(GRAPHS_FOLDER):
+        os.makedirs(GRAPHS_FOLDER)
+        print(f'Created folder {GRAPHS_FOLDER}')
+    dict_specs = read_plot_specs()
+    epm_results = extract_simulation_folder(RESULTS_FOLDER)
+    epm_results = process_outputs(epm_results, folder=RESULTS_FOLDER, additional_processing=True)
+    epm_results = process_for_labels(epm_results, dict_specs)
+    return dict_specs, epm_results, RESULTS_FOLDER, GRAPHS_FOLDER
+
+
+def postprocess(folder, multizone=False):
+    dict_specs, epm_results, results_folder, graphs_folder = process_simulation_results(folder)
+
+    if not multizone:  # single zone automatic graphs
+        make_automatic_plots(epm_results, dict_specs, graphs_folder, scenarios_to_remove=None)
+
+    else:
+        make_automatic_plots_multizone(epm_results, graphs_folder)

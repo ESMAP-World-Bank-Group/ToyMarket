@@ -13,6 +13,7 @@ import re
 from multiprocessing import Pool
 
 from utils import *
+import argparse
 
 
 PATH_GAMS = {
@@ -252,15 +253,67 @@ def launch_market_multiple_scenarios(scenario_baseline='scenario_baseline.csv',
     return folder, result
 
 
-if __name__ == '__main__':
-    launch_market_multiple_scenarios(scenario_baseline='input/scenario_baseline.csv',
-                                     scenarios_specification='input/scenario_spec_transmission.csv',
-                                     # selected_scenarios=['baseline', 'Contract1', 'Contract0p8', 'EskomDifferentiate', 'CoalDifferentiate', 'LowAvailability', 'FullDifferentiate'],
-                                     # selected_scenarios=['baseline', 'Contract1', 'FullDifferentiate', 'FullDifferentiateNoContract', 'EskomDifferentiate'],
-                                     # selected_scenarios=['baseline', 'Current', 'Current2026', 'CurrentFullAvail'],
-                                     # selected_scenarios=['TwoZoneNoTransmission', 'TwoZone5000', 'TwoZone10000', 'TwoZone15000', 'TwoZone'],
-                                     # selected_scenarios=['TwoZoneNoTransmission_2030', 'TwoZone5000_2030', 'TwoZone10000_2030', 'TwoZone15000_2030', 'TwoZone2030'],
-                                     selected_scenarios=['baseline'],
-                                     # removed_scenarios=['baseline', 'TransmissionInfinite', 'TransmissionMultiZone', 'TwoZone2027'],
-                                     cpu=1, path_gams=None,
+def main(test_args=None):
+    parser = argparse.ArgumentParser(description="Process some configurations.")
+
+    parser.add_argument(
+        "--baseline",
+        type=str,
+        default="input/scenario_baseline.csv",
+        help="Baseline scenario file (default: input/scenario_baseline.csv)"
+    )
+
+    parser.add_argument(
+        "--spec",
+        type=str,
+        default=None,
+        help="Specifications scenario file (default: None)"
+    )
+
+    parser.add_argument(
+        "--selected_scenarios",
+        nargs="+",  # Accepts one or more values
+        type=str,
+        default=None,
+        help="List of selected scenarios (default: None). Example usage: --selected_scenarios baseline HighDemand"
+    )
+
+    parser.add_argument(
+        "--removed_scenarios",
+        nargs="+",  # Accepts one or more values
+        type=str,
+        default=None,
+        help="List of scenarios to remove (default: None). Example usage: --removed_scenarios HighDemand"
+    )
+
+    parser.add_argument(
+        "--cpu",
+        type=int,
+        default=1,
+        help="Number of CPUs (default: 1)"
+    )
+
+    args = parser.parse_args()  # Normal command-line parsing
+
+    launch_market_multiple_scenarios(scenario_baseline=args.baseline,
+                                     scenarios_specification=args.spec,
+                                     selected_scenarios=args.selected_scenarios,
+                                     removed_scenarios=args.removed_scenarios,
+                                     cpu=args.cpu,
+                                     path_gams=None,
                                      path_engine_file=None)
+
+
+if __name__ == '__main__':
+    # launch_market_multiple_scenarios(scenario_baseline='input/scenario_baseline.csv',
+    #                                  scenarios_specification='input/scenario_spec_transmission.csv',
+    #                                  # selected_scenarios=['baseline', 'Contract1', 'Contract0p8', 'EskomDifferentiate', 'CoalDifferentiate', 'LowAvailability', 'FullDifferentiate'],
+    #                                  # selected_scenarios=['baseline', 'Contract1', 'FullDifferentiate', 'FullDifferentiateNoContract', 'EskomDifferentiate'],
+    #                                  # selected_scenarios=['baseline', 'Current', 'Current2026', 'CurrentFullAvail'],
+    #                                  # selected_scenarios=['TwoZoneNoTransmission', 'TwoZone5000', 'TwoZone10000', 'TwoZone15000', 'TwoZone'],
+    #                                  # selected_scenarios=['TwoZoneNoTransmission_2030', 'TwoZone5000_2030', 'TwoZone10000_2030', 'TwoZone15000_2030', 'TwoZone2030'],
+    #                                  selected_scenarios=['baseline'],
+    #                                  # removed_scenarios=['baseline', 'TransmissionInfinite', 'TransmissionMultiZone', 'TwoZone2027'],
+    #                                  cpu=1, path_gams=None,
+    #                                  path_engine_file=None)
+    main()

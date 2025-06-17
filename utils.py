@@ -137,6 +137,7 @@ def process_outputs(epm_results, scenarios_rename=None, keys=None, folder=None, 
     return epm_dict
 
 
+
 def filter_dataframe(df, conditions):
     """
     Filters a DataFrame based on a dictionary of conditions.
@@ -169,7 +170,7 @@ def process_additional_dataframe(epm_results, folder, scenarios_rename=None):
     scenario_df = []
     # Get scenario
     for new_folder in folder.iterdir():
-        if (new_folder.is_dir()) & ('simulation' in str(new_folder) ) & ('images' not in str(new_folder)) & ('dataframes' not in str(new_folder)):
+        if (new_folder.is_dir()) & ('simulation' in str(new_folder) ) & ('img' not in str(new_folder)) & ('dataframes' not in str(new_folder)):
             scenario_file = new_folder / 'input' / 'scenario.csv'
             scenario = pd.read_csv(scenario_file)
             scenario_name = str(new_folder).split('/')[-1]
