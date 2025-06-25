@@ -1,8 +1,8 @@
 
 
-$if not set A $set A input/A.csv
-$if not set B $set B input/B.csv
-$if not set pContractVolume $set pContractVolume input/pContractVolume.csv
+$if not set A $set A output/simulations_run_20250625_151552/TwoZone2030_NoTransmission/input/A.csv
+$if not set B $set B output/simulations_run_20250625_151552/TwoZone2030_NoTransmission/input/B.csv
+$if not set pContractVolume $set pContractVolume output/simulations_run_20250625_151552/TwoZone2030_NoTransmission/input/pContractVolume.csv
 
 $log ### reading using Connect and CSV Input with Python
 

@@ -19,6 +19,7 @@ PARAMETER
         pPlantCapacity(s,g,y)                   'Plant capacity'
         pCapacity(s,f,y)                        'Fuel capacity'
         pTrade(s,z,z2,y,q,d,t)                  'Trade between zones'
+        pRevenue(s,i,*,y)                         'Revenue for firms from market and from contracts'
              
 ;
 
@@ -59,6 +60,13 @@ pDispatch("%SCENARIO%",z,y,q,d,t,"Imports") =      sum(sTopology(z,z2), vFlow.l(
 pDispatch("%SCENARIO%",z,y,q,d,t,"Exports") =   - sum(sTopology(z,z2), vFlow.l(z,z2,y,q,d,t));
 
 pTrade("%SCENARIO%",sTopology(z,z2),y,q,d,t) = vFlow.L(z,z2,y,q,d,t);
+
+
+pRevenue("%SCENARIO%",i,'Market',y) = sum((gimap(g,i),z,q,d,t), pPrice("%SCENARIO%",z,y,q,d,t) * vGenSupply.l(y,g,q,d,t));
+
+$ifThenI %SCENARIO% == Cournot
+    pRevenue("%SCENARIO%",i,'Contract',y)$(cournotfirms(i)) = sum((gimap(g,i),z,q,d,t), (pFirmData(i,'ContractPrice') - pPrice("%SCENARIO%",z,y,q,d,t)) * pContractVolume(i,z,y,q,d,t));
+$endIf
 
 
 *

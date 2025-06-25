@@ -161,7 +161,7 @@ $ifThenI %SCENARIO% == Least-cost
     PerfectCompetition.solprint = 2;
     PerfectCompetition.OptFile = 1;
     PerfectCompetition.dictfile = 0;
-*    PerfectCompetition.savepoint = 1;
+    PerfectCompetition.savepoint = 1;
 
     solve PerfectCompetition using LP maximizing vObjVal;
     
@@ -189,6 +189,6 @@ $ifThenI %SCENARIO% == Least-cost
 $endIf
 
 $ifThenI %SCENARIO% == Cournot
-    execute_unload 'ResultsCournot.gdx' pPrice, pSupplyFirm, pSupplyMarket, pDemand, pGenSupply, pDispatch, pTrade, pPlantCapacity, pCapacity;
+    execute_unload 'ResultsCournot.gdx' pPrice, pSupplyFirm, pSupplyMarket, pDemand, pGenSupply, pDispatch, pTrade, pPlantCapacity, pCapacity, pRevenue;
 $endIf
 

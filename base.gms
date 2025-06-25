@@ -36,7 +36,7 @@ cournotfirms(i)                      'Cournot-behaving generators'
 sGenMap                        'Set of parameters for Generators tab'       /StYr, ReYr, Capacity, Status, HeatRate, FOM, VOM, RampUpRate,
                                                                             RampDownRate, VRE/
 sStorageMap                    'Set of parameters for Generators tab'       /StorageDuration, Efficiency/
-sFirmMap                        'Set of parameters for Generators tab'      /Fringe, ContractLevel/
+sFirmMap                        'Set of parameters for Generators tab'      /Fringe, ContractLevel, ContractPrice/
 
 
 gstatus                         'generator status' / Existing, Candidate, Committed /
@@ -149,7 +149,7 @@ eJointCap(g,y,q,d,t)..
             vGenSupply(y,g,q,d,t) =L= pFixedCapacity(g,y);
             
 eVRE_Limit(g,y,q,d,t)$(pGenData(g,"VRE"))..
-            vGenSupply(y,g,q,d,t) =E= pVREgenProfile(q,d,t,g)*pFixedCapacity(g,y);
+            vGenSupply(y,g,q,d,t) =L= pVREgenProfile(q,d,t,g)*pFixedCapacity(g,y);
             
             
 eCF(g,y,q)$(NOT pGenData(g,"VRE") AND pAvailability(g,q))..
@@ -161,7 +161,7 @@ eDemandSupply(y,z,q,d,t)..
             - sum(g$(gzmap(g,z) AND sto(g)), vStorageCharging(y,g,q,d,t))
             - sum(z2$sTopology(z,z2), vFlow(z,z2,y,q,d,t))
             + sum(z2$sTopology(z,z2), vFlow(z2,z,y,q,d,t))*0.999
-            - vSupplyMarket(z,y,q,d,t) =E= 0 ;
+            =g= vSupplyMarket(z,y,q,d,t) ;
         
 
 ePrice(z,y,q,d,t)..
