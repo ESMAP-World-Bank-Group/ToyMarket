@@ -1518,6 +1518,32 @@ def make_automatic_plots_multizone(epm_results, folder):
                                       show_total=True,
                                       figsize=(8, 6))
 
+    # Demand and supply
+    df_demand = epm_results['pDemandTotal'].copy()
+    df_demand = df_demand.groupby(['scenario', 'competition', 'year'])['value'].sum().reset_index()
+    df_demand['value'] = df_demand['value'] * 1e-6
+    df_demand = df_demand.rename(columns={'value': 'demand'})
+
+    df_prod = epm_results['pEnergyByFuel'].copy()
+    df_prod = df_prod.groupby(['scenario', 'competition', 'year'])['value'].sum().reset_index()
+    df_prod['value'] = df_prod['value'] * 1e-6
+    df_prod = df_prod.rename(columns={'value': 'production'})
+
+    df_tot = df_demand.merge(df_prod, on=['scenario', 'competition', 'year'])
+    df_tot = df_tot.set_index(['scenario', 'competition', 'year']).stack().to_frame().rename(
+        columns={0: 'value'}).reset_index().rename(columns={'level_3': 'attribute'})
+
+    for scenario in df_tot.scenario.unique():
+
+            df_tot_subset = df_tot.loc[(df_tot.scenario == scenario)]
+
+            filename = Path(folder) / Path(f'demand_supply_agg_{scenario}.png')
+            make_stacked_bar_subplots(df_tot_subset, filename, dict_colors=None, column_stacked=None, column_subplots='attribute',
+                                      column_value='value', column_multiple_bars='competition', annotate=False,
+                                      format_y=lambda y, _: '{:.0f} TWh'.format(y), annotation_format="{:.0f}", cap=5,
+                                      show_total=True,
+                                      figsize=(8, 6))
+
 
 
 def path_to_extract_results(folder):
