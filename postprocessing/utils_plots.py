@@ -1486,7 +1486,7 @@ def make_automatic_plots_multizone(epm_results, folder):
 
         filename = Path(folder) / Path(f'prices_{scenario}.png')
 
-        make_multiple_lines_subplots(df_scenario, filename, dict_colors=None, figsize=(6, 6), column_subplots='zone',
+        make_multiple_lines_subplots(df_scenario, filename, dict_colors=None, figsize=(10, 6), column_subplots='zone',
                                      column_xaxis='season_day_hour', column_value='value',
                                      column_multiple_lines='competition', format_y=lambda y, _: '{:.0f} US$ /MWh'.format(y),
                                      annotation_format="{:.0f}", max_ticks=10, rotation=45, ylim_bottom=40)

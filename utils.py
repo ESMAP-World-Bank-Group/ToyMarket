@@ -390,6 +390,9 @@ def estimate_demand_slope_intercept(demand, price, elasticity, folder, scenario)
 def estimate_hourly_contracting(pSupplyFirm, pFirmData, folder, scenario):
     """Calculates hourly contracted volume per firm based on supply under perfect competition setting.
     This will only estimate contracted volume for Cournot firms."""
+    pFirmData = pFirmData.copy()
+    if 'ContractPrice' in pFirmData.columns:
+        pFirmData = pFirmData.drop(columns=['ContractPrice'])
     pContractVolume = (pFirmData * pSupplyFirm).dropna()
 
     if not (Path(folder) / Path('input')).is_dir():

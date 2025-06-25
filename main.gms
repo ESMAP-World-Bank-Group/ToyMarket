@@ -106,7 +106,6 @@ fringefirms(i) = istatusmap(i,'Fringe');
 cournotfirms(i) = not fringefirms(i);
 
 
-
 * Calculating VarCost in $/MWh
 pVarCost(g,y) = pGenData(g,'VOM') + (pGenData(g,'HeatRate') * sum(f$(gfmap(g,f)), 
                         pFuelPrice(f,y)))$(sum(f$gfmap(g,f), pFuelPrice(f,y)));
