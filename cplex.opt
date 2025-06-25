@@ -8,3 +8,5 @@ Names=yes
 startalg=4 ! [COMMENT]
 scaind=1 ! [COMMENT]
 predual=-1 ! [COMMENT]
+iis=1 ! [COMMENT]
+mipdisplay=5 ! [COMMENT]

@@ -222,7 +222,9 @@ eDemandSupply_FixedDemand(y,z,q,d,t)..
             - sum(g$(gzmap(g,z) AND sto(g)), vStorageCharging(y,g,q,d,t))
             - sum(z2$sTopology(z,z2), vFlow(z,z2,y,q,d,t))
             + sum(z2$sTopology(z,z2), vFlow(z2,z,y,q,d,t))*0.999
-            + vUnmetDemand(z,y,q,d,t) - pFixedDemand(z,y,q,d,t)=E= 0 ;
+            + vUnmetDemand(z,y,q,d,t)
+*            - pFixedDemand(z,y,q,d,t)=E= 0 ;
+            =g= pFixedDemand(z,y,q,d,t) ;
             
 
 

@@ -73,7 +73,6 @@ $gdxIn
 $endIf
 
 
-
 *----------------------------------------------------------------------------------------
 *                          PREPROCESSING OF DATA
 *----------------------------------------------------------------------------------------
@@ -129,7 +128,6 @@ pRR(y) = 1/[(1+pSettings("DR"))**(sum(yy$(ord(yy)<ord(y)), pWeightYear(yy)))];
 pFixedDemand(z,y,q,d,t) = pDemandProfile(z,q,d,t) * pDemandForecast(z,'Peak',y);
 
 sTopology(z,z2) = sum((y),pTransferLimit(z,z2,y));
-display sTopology;
 
 
 execute_unload '%GDX_INPUT%_common' gimap, gzmap, gfmap, gtechmap, istatusmap, pVarCost, pFixedDemand, pFirmData, pWeightYear, pRR, sTopology, pTransferLimit;
@@ -158,10 +156,12 @@ option qcp = cplex;
 option limcol = 0;
 
 
+
 $ifThenI %SCENARIO% == Least-cost
     PerfectCompetition.solprint = 2;
     PerfectCompetition.OptFile = 1;
     PerfectCompetition.dictfile = 0;
+*    PerfectCompetition.savepoint = 1;
 
     solve PerfectCompetition using LP maximizing vObjVal;
     

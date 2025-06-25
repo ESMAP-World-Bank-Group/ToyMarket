@@ -13,6 +13,7 @@ import re
 from multiprocessing import Pool
 
 from utils import *
+from postprocessing.utils_plots import *
 import argparse
 
 
@@ -183,15 +184,17 @@ def launch_market_multiple_scenarios(scenario_baseline='scenario_baseline.csv',
     path_engine_file: str, optional, default False
     """
 
+    working_directory = os.getcwd()
+
     # Add the full path to the files
     if path_engine_file:
-        path_engine_file = os.path.join(os.getcwd(), path_engine_file)
+        path_engine_file = os.path.join(working_directory, path_engine_file)
 
     # Read the scenario CSV file
     if path_gams is not None:  # path for required gams file is provided
-        path_gams = {k: os.path.join(os.getcwd(), i) for k, i in path_gams.items()}
+        path_gams = {k: os.path.join(working_directory, i) for k, i in path_gams.items()}
     else:  # use default configuration
-        path_gams = {k: os.path.join(os.getcwd(), i) for k, i in PATH_GAMS.items()}
+        path_gams = {k: os.path.join(working_directory, i) for k, i in PATH_GAMS.items()}
 
     # Read scenario baseline
     scenario_baseline = pd.read_csv(scenario_baseline).set_index('paramNames').squeeze()
@@ -216,7 +219,7 @@ def launch_market_multiple_scenarios(scenario_baseline='scenario_baseline.csv',
 
     # Add full path to the files
     for k in s.keys():
-        s[k] = s[k].apply(lambda i: os.path.join(os.getcwd(), 'input', i))
+        s[k] = s[k].apply(lambda i: os.path.join(working_directory, 'input', i))
 
     # Create dir for simulation and change current working directory
     if 'output' not in os.listdir():
@@ -249,6 +252,8 @@ def launch_market_multiple_scenarios(scenario_baseline='scenario_baseline.csv',
     if scenario_data:
         final_df = pd.concat(scenario_data, axis=1)
         final_df.to_csv(os.path.join('simulation_scenarios.csv'), index=True)
+
+    os.chdir(working_directory)
 
     return folder, result
 
@@ -293,27 +298,40 @@ def main(test_args=None):
         help="Number of CPUs (default: 1)"
     )
 
+    parser.add_argument(
+        "--postprocess",
+        type=str,
+        default=None,
+        help="Run only postprocess with folder (default: None)"
+    )
+
+    parser.add_argument(
+        "--multizone",
+        action="store_true",
+        help="Enable reduced output (default: False)"
+    )
+
+
     args = parser.parse_args()  # Normal command-line parsing
 
-    launch_market_multiple_scenarios(scenario_baseline=args.baseline,
-                                     scenarios_specification=args.spec,
-                                     selected_scenarios=args.selected_scenarios,
-                                     removed_scenarios=args.removed_scenarios,
-                                     cpu=args.cpu,
-                                     path_gams=None,
-                                     path_engine_file=None)
+    # If none do not run EPM
+    if args.postprocess is None:
+        folder, result = launch_market_multiple_scenarios(scenario_baseline=args.baseline,
+                                         scenarios_specification=args.spec,
+                                         selected_scenarios=args.selected_scenarios,
+                                         removed_scenarios=args.removed_scenarios,
+                                         cpu=args.cpu,
+                                         path_gams=None,
+                                         path_engine_file=None)
+
+    else:
+        print(f"Project folder: {args.postprocess}")
+        print("EPM does not run again but use the existing simulation within the folder" )
+        folder = args.postprocess
+
+    postprocess(folder, multizone=args.multizone)
 
 
 if __name__ == '__main__':
-    # launch_market_multiple_scenarios(scenario_baseline='input/scenario_baseline.csv',
-    #                                  scenarios_specification='input/scenario_spec_transmission.csv',
-    #                                  # selected_scenarios=['baseline', 'Contract1', 'Contract0p8', 'EskomDifferentiate', 'CoalDifferentiate', 'LowAvailability', 'FullDifferentiate'],
-    #                                  # selected_scenarios=['baseline', 'Contract1', 'FullDifferentiate', 'FullDifferentiateNoContract', 'EskomDifferentiate'],
-    #                                  # selected_scenarios=['baseline', 'Current', 'Current2026', 'CurrentFullAvail'],
-    #                                  # selected_scenarios=['TwoZoneNoTransmission', 'TwoZone5000', 'TwoZone10000', 'TwoZone15000', 'TwoZone'],
-    #                                  # selected_scenarios=['TwoZoneNoTransmission_2030', 'TwoZone5000_2030', 'TwoZone10000_2030', 'TwoZone15000_2030', 'TwoZone2030'],
-    #                                  selected_scenarios=['baseline'],
-    #                                  # removed_scenarios=['baseline', 'TransmissionInfinite', 'TransmissionMultiZone', 'TwoZone2027'],
-    #                                  cpu=1, path_gams=None,
-    #                                  path_engine_file=None)
+
     main()

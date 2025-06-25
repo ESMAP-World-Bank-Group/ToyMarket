@@ -19,7 +19,8 @@ def input_checks(scenario):
 
     pAvailability = pd.read_csv(scenario['pAvailability'], index_col=0)
 
-    missing_in_gendata = set(pAvailability.index.unique()) - set(pGenData.plants.unique())
+    pGenDataNonVRE = pGenData.loc[pGenData.VRE != 1]
+    missing_in_gendata = set(pGenDataNonVRE.plants.unique()) - set(pAvailability.index.unique())
 
     if missing_in_gendata:
         raise ValueError(f"Mismatch in generator names in pAvailability!\n"

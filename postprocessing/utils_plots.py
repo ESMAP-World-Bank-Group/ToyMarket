@@ -29,7 +29,7 @@ COLORS = 'static/colors_SA.csv'
 FUELS = 'static/fuels.csv'
 TECHS = 'static/technologies.csv'
 
-def read_plot_specs():
+def read_plot_specs(folder='postprocessing'):
     """
     Read the specifications for the plots from the static files.
 
@@ -39,9 +39,9 @@ def read_plot_specs():
         Dictionary containing the specifications for the plots
     """
 
-    colors = pd.read_csv(COLORS)
-    fuel_mapping = pd.read_csv(FUELS)
-    tech_mapping = pd.read_csv(TECHS)
+    colors = pd.read_csv(os.path.join(folder, COLORS))
+    fuel_mapping = pd.read_csv(os.path.join(folder, FUELS))
+    tech_mapping = pd.read_csv(os.path.join(folder, TECHS))
 
     dict_specs = {
         'colors': colors.set_index('Processing')['Color'].to_dict(),
@@ -1532,13 +1532,13 @@ def path_to_extract_results(folder):
     return RESULTS_FOLDER
 
 
-def process_simulation_results(folder, graphs_folder='img'):
-    RESULTS_FOLDER = path_to_extract_results(folder)
+def process_simulation_results(FOLDER, graphs_folder='img', folder='postprocessing'):
+    RESULTS_FOLDER = path_to_extract_results(FOLDER)
     GRAPHS_FOLDER = os.path.join(RESULTS_FOLDER, graphs_folder)
     if not os.path.exists(GRAPHS_FOLDER):
         os.makedirs(GRAPHS_FOLDER)
         print(f'Created folder {GRAPHS_FOLDER}')
-    dict_specs = read_plot_specs()
+    dict_specs = read_plot_specs(folder=folder)
     epm_results = extract_simulation_folder(RESULTS_FOLDER)
     epm_results = process_outputs(epm_results, folder=RESULTS_FOLDER, additional_processing=True)
     epm_results = process_for_labels(epm_results, dict_specs)
